@@ -47,6 +47,8 @@ class AuthService {
           familyDocId: adminSnap.id,
           familyId: 0,
           isAdmin: true,
+          role: 'admin',
+          familyName: adminSnap['familyName'] ?? 'Admin',
         );
 
         return LoginResponse(
@@ -94,6 +96,8 @@ class AuthService {
         familyDocId: doc.id,
         familyId: data['familyId'],
         isAdmin: false,
+        role: 'member',
+        familyName: data['familyName'] ?? '',
       );
 
       return LoginResponse(
