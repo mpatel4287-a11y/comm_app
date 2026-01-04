@@ -1,6 +1,6 @@
 # comm_app
 
-A new Flutter project.
+please help me to complete this project, devilhomeing@gmail.com.
 
 ## Getting Started
 
