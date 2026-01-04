@@ -130,37 +130,75 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
   }
 
   Widget _buildStatsSection() {
-    return FutureBuilder<List<int>>(
-      future: Future.wait([
-        _memberService.getMemberCount(),
-        _memberService.getActiveMemberCount(),
-      ]),
+    return FutureBuilder<Map<String, int>>(
+      future: _getStatsData(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const SizedBox.shrink();
         }
 
-        final totalMembers = snapshot.data![0];
-        final activeMembers = snapshot.data![1];
+        final stats = snapshot.data!;
+        final totalMembers = stats['total'] ?? 0;
+        final activeMembers = stats['active'] ?? 0;
+        final newThisMonth = stats['newThisMonth'] ?? 0;
+        final married = stats['married'] ?? 0;
+        final unmarried = stats['unmarried'] ?? 0;
 
         return Container(
           padding: const EdgeInsets.all(16),
-          child: Row(
+          child: Column(
             children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Members',
-                  totalMembers.toString(),
-                  Icons.people,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Total Members',
+                      totalMembers.toString(),
+                      Icons.people,
+                      Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Active',
+                      activeMembers.toString(),
+                      Icons.check_circle,
+                      Colors.green,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Active',
-                  activeMembers.toString(),
-                  Icons.check_circle,
-                ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'New This Month',
+                      newThisMonth.toString(),
+                      Icons.new_releases,
+                      Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Married',
+                      married.toString(),
+                      Icons.favorite,
+                      Colors.pink,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Unmarried',
+                      unmarried.toString(),
+                      Icons.person,
+                      Colors.purple,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -169,22 +207,56 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon) {
+  Future<Map<String, int>> _getStatsData() async {
+    final allMembers = await _memberService.getAllMembers();
+
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+
+    final total = allMembers.length;
+    final active = allMembers.where((m) => m.isActive).length;
+    final newThisMonth = allMembers
+        .where((m) => m.createdAt.isAfter(startOfMonth))
+        .length;
+    final married = allMembers
+        .where((m) => m.marriageStatus.toLowerCase() == 'married')
+        .length;
+    final unmarried = allMembers
+        .where((m) => m.marriageStatus.toLowerCase() == 'unmarried')
+        .length;
+
+    return {
+      'total': total,
+      'active': active,
+      'newThisMonth': newThisMonth,
+      'married': married,
+      'unmarried': unmarried,
+    };
+  }
+
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            Icon(icon, size: 32, color: Colors.blue.shade900),
+            Icon(icon, size: 28, color: color),
             const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             Text(
               title,
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

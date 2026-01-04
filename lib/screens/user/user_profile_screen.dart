@@ -8,7 +8,9 @@ import '../../services/language_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/member_service.dart';
 import '../../services/photo_service.dart';
+import '../../services/auth_service.dart';
 import '../../models/member_model.dart';
+import '../../auth/login_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -525,7 +527,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
 
     if (confirm == true) {
-      // TODO: Implement logout
+      try {
+        // Clear the session using AuthService
+        await AuthService().logout();
+
+        if (mounted) {
+          // Navigate to login screen and remove all previous routes
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error logging out: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 }

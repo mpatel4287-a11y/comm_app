@@ -214,4 +214,38 @@ class MemberService {
     }
     return allTags.toList()..sort();
   }
+
+  // ---------------- GET ALL MEMBERS (ONE-TIME FETCH) ----------------
+  Future<List<MemberModel>> getAllMembers() async {
+    final snapshot = await _firestore
+        .collection('members')
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((d) => MemberModel.fromMap(d.id, d.data()))
+        .toList();
+  }
+
+  // ---------------- GET MARRIED COUNT ----------------
+  Future<int> getMarriedCount() async {
+    final snapshot = await _firestore
+        .collection('members')
+        .where('marriageStatus', isEqualTo: 'married')
+        .count()
+        .get();
+    return snapshot.count ?? 0;
+  }
+
+  // ---------------- GET NEW MEMBERS THIS MONTH ----------------
+  Future<int> getNewMembersThisMonth() async {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+
+    final snapshot = await _firestore
+        .collection('members')
+        .where('createdAt', isGreaterThan: startOfMonth)
+        .count()
+        .get();
+    return snapshot.count ?? 0;
+  }
 }

@@ -1,6 +1,6 @@
 // lib/screens/user/user_calendar_screen.dart
 
-// ignore_for_file: prefer_final_fields, unused_element
+// ignore_for_file: prefer_final_fields, unused_element, unused_local_variable
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -238,23 +238,209 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
     ];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       child: Row(
         children: [
+          // Previous month button
           IconButton(
-            icon: const Icon(Icons.chevron_left),
+            icon: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.chevron_left, color: Colors.blue.shade900),
+            ),
             onPressed: _goToPreviousMonth,
           ),
+          // Month selector dropdown
           Expanded(
-            child: Text(
-              '${months[_focusedMonth.month - 1]} ${_focusedMonth.year}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
+            child: GestureDetector(
+              onTap: _showMonthSelector,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.calendar_month,
+                      color: Colors.blue.shade700,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${months[_focusedMonth.month - 1]} ${_focusedMonth.year}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.arrow_drop_down, color: Colors.blue.shade700),
+                  ],
+                ),
+              ),
             ),
           ),
+          // Next month button
           IconButton(
-            icon: const Icon(Icons.chevron_right),
+            icon: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.chevron_right, color: Colors.blue.shade900),
+            ),
             onPressed: _goToNextMonth,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMonthSelector() {
+    final now = DateTime.now();
+    final currentYear = now.year;
+    final months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Month & Year'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Year selector
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.remove),
+                    onPressed: () {
+                      if (_focusedMonth.year > _minMonth.year) {
+                        setState(() {
+                          _focusedMonth = DateTime(
+                            _focusedMonth.year - 1,
+                            _focusedMonth.month,
+                          );
+                        });
+                      }
+                    },
+                  ),
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      _focusedMonth.year.toString(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () {
+                      if (_focusedMonth.year < _maxMonth.year) {
+                        setState(() {
+                          _focusedMonth = DateTime(
+                            _focusedMonth.year + 1,
+                            _focusedMonth.month,
+                          );
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Month grid
+              GridView.builder(
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  childAspectRatio: 1.5,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: 12,
+                itemBuilder: (context, index) {
+                  final isSelected = _focusedMonth.month - 1 == index;
+                  final isCurrentMonth =
+                      now.month - 1 == index && now.year == _focusedMonth.year;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _focusedMonth = DateTime(_focusedMonth.year, index + 1);
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.blue.shade900
+                            : isCurrentMonth
+                            ? Colors.blue.shade100
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          months[index].substring(0, 3),
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black,
+                            fontWeight: isSelected || isCurrentMonth
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _focusedMonth = DateTime.now();
+                _selectedDay = DateTime.now();
+                _updateSelectedEvents();
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Today'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -371,5 +557,34 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
         ),
       ),
     );
+  }
+
+  void _updateSelectedEvents() {
+    if (_selectedDay == null) {
+      _selectedEvents = [];
+      return;
+    }
+
+    final monthKey = _selectedDay!.year * 12 + _selectedDay!.month;
+    final eventsForMonth = _monthlyEvents[monthKey] ?? [];
+
+    _selectedEvents = eventsForMonth.where((event) {
+      return _isSameDay(event.date, _selectedDay!);
+    }).toList();
+  }
+
+  List<EventModel> _getEventsForDay(DateTime day) {
+    final monthKey = day.year * 12 + day.month;
+    final eventsForMonth = _monthlyEvents[monthKey] ?? [];
+
+    return eventsForMonth.where((event) {
+      return _isSameDay(event.date, day);
+    }).toList();
+  }
+
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
   }
 }

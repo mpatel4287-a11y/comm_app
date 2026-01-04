@@ -1,5 +1,7 @@
 // lib/screens/user/member_detail_screen.dart
 
+// ignore_for_file: unused_field
+
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -123,30 +125,84 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
         title: const Text('Member Details'),
         backgroundColor: Colors.blue.shade900,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: _showShareOptions,
-          ),
-          if (_familyDocId != null)
-            PopupMenuButton<String>(
-              onSelected: (value) async {
-                if (value == 'share') {
+          // More options menu
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              switch (value) {
+                case 'call':
+                  _callPhone(member.phone);
+                  break;
+                case 'whatsapp':
+                  _openWhatsapp(member.whatsapp);
+                  break;
+                case 'message':
+                  _sendSms(member.phone);
+                  break;
+                case 'location':
+                  _openMap(member.googleMapLink);
+                  break;
+                case 'share':
                   _showShareOptions();
-                }
-              },
-              itemBuilder: (context) => [
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              if (member.phone.isNotEmpty)
                 const PopupMenuItem(
-                  value: 'share',
+                  value: 'call',
                   child: Row(
                     children: [
-                      Icon(Icons.share, size: 20),
+                      Icon(Icons.call, color: Colors.green, size: 20),
                       SizedBox(width: 8),
-                      Text('Share'),
+                      Text('Call'),
                     ],
                   ),
                 ),
-              ],
-            ),
+              if (member.whatsapp.isNotEmpty)
+                const PopupMenuItem(
+                  value: 'whatsapp',
+                  child: Row(
+                    children: [
+                      Icon(Icons.chat, color: Colors.green, size: 20),
+                      SizedBox(width: 8),
+                      Text('WhatsApp'),
+                    ],
+                  ),
+                ),
+              if (member.phone.isNotEmpty)
+                const PopupMenuItem(
+                  value: 'message',
+                  child: Row(
+                    children: [
+                      Icon(Icons.sms, color: Colors.blue, size: 20),
+                      SizedBox(width: 8),
+                      Text('Message'),
+                    ],
+                  ),
+                ),
+              if (member.googleMapLink.isNotEmpty)
+                const PopupMenuItem(
+                  value: 'location',
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text('Location'),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'share',
+                child: Row(
+                  children: [
+                    Icon(Icons.share, color: Colors.blue, size: 20),
+                    SizedBox(width: 8),
+                    Text('Share Contact'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -297,35 +353,83 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
           ],
         ),
       ),
-      // Quick Actions
-      bottomNavigationBar: BottomAppBar(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            TextButton.icon(
-              onPressed: member.phone.isNotEmpty
-                  ? () => _callPhone(member.phone)
-                  : null,
-              icon: const Icon(Icons.phone),
-              label: const Text('Call'),
-            ),
-            TextButton.icon(
-              onPressed: member.whatsapp.isNotEmpty
-                  ? () => _openWhatsapp(member.whatsapp)
-                  : null,
-              icon: const Icon(Icons.chat),
-              label: const Text('WhatsApp'),
-            ),
-            TextButton.icon(
-              onPressed: member.phone.isNotEmpty
-                  ? () => _sendSms(member.phone)
-                  : null,
-              icon: const Icon(Icons.sms),
-              label: const Text('SMS'),
-            ),
-          ],
+      // Quick Actions with Floating Action Buttons
+      floatingActionButton: _buildQuickActions(),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    if (_member == null) return const SizedBox.shrink();
+    final member = _member!;
+
+    if (member.phone.isEmpty &&
+        member.whatsapp.isEmpty &&
+        member.googleMapLink.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (member.phone.isNotEmpty) ...[
+          _buildQuickActionFab(
+            icon: Icons.call,
+            label: 'Call',
+            color: Colors.green,
+            onPressed: () => _callPhone(member.phone),
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (member.whatsapp.isNotEmpty) ...[
+          _buildQuickActionFab(
+            icon: Icons.chat,
+            label: 'WhatsApp',
+            color: const Color(0xFF25D366),
+            onPressed: () => _openWhatsapp(member.whatsapp),
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (member.googleMapLink.isNotEmpty) ...[
+          _buildQuickActionFab(
+            icon: Icons.location_on,
+            label: 'Map',
+            color: Colors.red,
+            onPressed: () => _openMap(member.googleMapLink),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildQuickActionFab({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(right: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
         ),
-      ),
+        FloatingActionButton.small(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          onPressed: onPressed,
+          child: Icon(icon),
+        ),
+      ],
     );
   }
 

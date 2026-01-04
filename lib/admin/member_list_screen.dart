@@ -43,252 +43,293 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   List<Map<String, String>> _firms = [];
   bool _loading = false;
 
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+
+    try {
+      // Get family data for familyId
+      final familyDoc = await FirebaseFirestore.instance
+          .collection('families')
+          .doc(widget.familyDocId)
+          .get();
+      final familyData = familyDoc.data() as Map<String, dynamic>;
+      final familyId = familyData['familyId'].toString();
+
+      await MemberService().addMember(
+        familyDocId: widget.familyDocId,
+        familyId: familyId,
+        familyName: widget.familyName,
+        fullName: _fullNameCtrl.text.trim(),
+        surname: _surnameCtrl.text.trim(),
+        fatherName: _fatherNameCtrl.text.trim(),
+        motherName: _motherNameCtrl.text.trim(),
+        gotra: _gotraCtrl.text.trim(),
+        birthDate: _birthDateCtrl.text.trim(),
+        bloodGroup: _bloodGroup,
+        marriageStatus: _marriageStatus,
+        nativeHome: _nativeHomeCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim(),
+        address: _addressCtrl.text.trim(),
+        googleMapLink: _googleMapLinkCtrl.text.trim(),
+        firms: _firms,
+        whatsapp: _whatsappCtrl.text.trim(),
+        instagram: _instagramCtrl.text.trim(),
+        facebook: _facebookCtrl.text.trim(),
+        tags: _tags,
+        parentMid: _parentMidCtrl.text.trim(),
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding member: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Add Member')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Personal Info
-            const Text(
-              'Personal Information',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _fullNameCtrl,
-              decoration: const InputDecoration(labelText: 'Full Name *'),
-              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _surnameCtrl,
-              decoration: const InputDecoration(labelText: 'Surname'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _fatherNameCtrl,
-              decoration: const InputDecoration(labelText: 'Father Name'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _motherNameCtrl,
-              decoration: const InputDecoration(labelText: 'Mother Name'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _gotraCtrl,
-              decoration: const InputDecoration(labelText: 'Gotra'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _birthDateCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Birth Date (dd/MM/yyyy) *',
-                hintText: '15/08/1990',
-              ),
-              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _bloodGroup.isEmpty ? null : _bloodGroup,
-              decoration: const InputDecoration(labelText: 'Blood Group'),
-              items: ['', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']
-                  .map(
-                    (bg) => DropdownMenuItem(
-                      value: bg,
-                      child: Text(bg.isEmpty ? 'Select' : bg),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (v) => setState(() => _bloodGroup = v ?? ''),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _marriageStatus,
-              decoration: const InputDecoration(labelText: 'Marriage Status'),
-              items: [
-                'unmarried',
-                'married',
-              ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (v) =>
-                  setState(() => _marriageStatus = v ?? 'unmarried'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _nativeHomeCtrl,
-              decoration: const InputDecoration(labelText: 'Native Home'),
-            ),
-
-            // Contact Info
-            const SizedBox(height: 20),
-            const Text(
-              'Contact Information',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _phoneCtrl,
-              decoration: const InputDecoration(labelText: 'Phone *'),
-              keyboardType: TextInputType.phone,
-              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _addressCtrl,
-              decoration: const InputDecoration(labelText: 'Address'),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _googleMapLinkCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Google Map Link',
-                hintText: 'https://maps.google.com/...',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _whatsappCtrl,
-              decoration: const InputDecoration(labelText: 'WhatsApp'),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _instagramCtrl,
-              decoration: const InputDecoration(labelText: 'Instagram'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _facebookCtrl,
-              decoration: const InputDecoration(labelText: 'Facebook'),
-            ),
-
-            // Family Tree
-            const SizedBox(height: 20),
-            const Text(
-              'Family Tree',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _parentMidCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Parent Member ID',
-                hintText: 'Enter parent MID (optional)',
-              ),
-            ),
-
-            // Tags (Admin Only)
-            const SizedBox(height: 20),
-            const Text(
-              'Tags',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Row(
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: const Text('Add Member'),
+            backgroundColor: Colors.blue.shade900,
+          ),
+          body: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _tagsCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Add Tag (max 15 chars)',
-                    ),
-                    onFieldSubmitted: (v) {
-                      if (v.isNotEmpty && v.length <= 15) {
-                        setState(() {
-                          if (!_tags.contains(v)) _tags.add(v);
-                          _tagsCtrl.clear();
-                        });
-                      }
-                    },
+                // Personal Info
+                const Text(
+                  'Personal Information',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _fullNameCtrl,
+                  decoration: const InputDecoration(labelText: 'Full Name *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _surnameCtrl,
+                  decoration: const InputDecoration(labelText: 'Surname'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _fatherNameCtrl,
+                  decoration: const InputDecoration(labelText: 'Father Name'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _motherNameCtrl,
+                  decoration: const InputDecoration(labelText: 'Mother Name'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _gotraCtrl,
+                  decoration: const InputDecoration(labelText: 'Gotra'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _birthDateCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Birth Date (dd/MM/yyyy) *',
+                    hintText: '15/08/1990',
+                  ),
+                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _bloodGroup.isEmpty ? null : _bloodGroup,
+                  decoration: const InputDecoration(labelText: 'Blood Group'),
+                  items: ['', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']
+                      .map(
+                        (bg) => DropdownMenuItem(
+                          value: bg,
+                          child: Text(bg.isEmpty ? 'Select' : bg),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _bloodGroup = v ?? ''),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _marriageStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Marriage Status',
+                  ),
+                  items: ['unmarried', 'married']
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => _marriageStatus = v ?? 'unmarried'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _nativeHomeCtrl,
+                  decoration: const InputDecoration(labelText: 'Native Home'),
+                ),
+
+                // Contact Info
+                const SizedBox(height: 20),
+                const Text(
+                  'Contact Information',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _phoneCtrl,
+                  decoration: const InputDecoration(labelText: 'Phone *'),
+                  keyboardType: TextInputType.phone,
+                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _addressCtrl,
+                  decoration: const InputDecoration(labelText: 'Address'),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _googleMapLinkCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Google Map Link',
+                    hintText: 'https://maps.google.com/...',
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    final v = _tagsCtrl.text.trim();
-                    if (v.isNotEmpty && v.length <= 15 && !_tags.contains(v)) {
-                      setState(() {
-                        _tags.add(v);
-                        _tagsCtrl.clear();
-                      });
-                    }
-                  },
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _whatsappCtrl,
+                  decoration: const InputDecoration(labelText: 'WhatsApp'),
+                  keyboardType: TextInputType.phone,
                 ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _instagramCtrl,
+                  decoration: const InputDecoration(labelText: 'Instagram'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _facebookCtrl,
+                  decoration: const InputDecoration(labelText: 'Facebook'),
+                ),
+
+                // Family Tree
+                const SizedBox(height: 20),
+                const Text(
+                  'Family Tree',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _parentMidCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Parent Member ID',
+                    hintText: 'Enter parent MID (optional)',
+                  ),
+                ),
+
+                // Tags (Admin Only)
+                const SizedBox(height: 20),
+                const Text(
+                  'Tags',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _tagsCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Add Tag (max 15 chars)',
+                        ),
+                        onFieldSubmitted: (v) {
+                          if (v.isNotEmpty && v.length <= 15) {
+                            setState(() {
+                              if (!_tags.contains(v)) _tags.add(v);
+                              _tagsCtrl.clear();
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: () {
+                        final v = _tagsCtrl.text.trim();
+                        if (v.isNotEmpty &&
+                            v.length <= 15 &&
+                            !_tags.contains(v)) {
+                          setState(() {
+                            _tags.add(v);
+                            _tagsCtrl.clear();
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                if (_tags.isNotEmpty)
+                  Wrap(
+                    spacing: 8,
+                    children: _tags.map((tag) {
+                      return Chip(
+                        label: Text(tag),
+                        onDeleted: () => setState(() => _tags.remove(tag)),
+                      );
+                    }).toList(),
+                  ),
+
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _submitForm,
+                  child: const Text('Add Member'),
+                ),
+                const SizedBox(height: 24),
               ],
             ),
-            if (_tags.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                children: _tags.map((tag) {
-                  return Chip(
-                    label: Text(tag),
-                    onDeleted: () => setState(() => _tags.remove(tag)),
-                  );
-                }).toList(),
-              ),
-
-            const SizedBox(height: 24),
-            _loading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: () async {
-                      if (!_formKey.currentState!.validate()) return;
-
-                      setState(() => _loading = true);
-
-                      try {
-                        // Get family data for familyId
-                        final familyDoc = await FirebaseFirestore.instance
-                            .collection('families')
-                            .doc(widget.familyDocId)
-                            .get();
-                        final familyData =
-                            familyDoc.data() as Map<String, dynamic>;
-                        final familyId = familyData['familyId'].toString();
-
-                        await MemberService().addMember(
-                          familyDocId: widget.familyDocId,
-                          familyId: familyId,
-                          familyName: widget.familyName,
-                          fullName: _fullNameCtrl.text.trim(),
-                          surname: _surnameCtrl.text.trim(),
-                          fatherName: _fatherNameCtrl.text.trim(),
-                          motherName: _motherNameCtrl.text.trim(),
-                          gotra: _gotraCtrl.text.trim(),
-                          birthDate: _birthDateCtrl.text.trim(),
-                          bloodGroup: _bloodGroup,
-                          marriageStatus: _marriageStatus,
-                          nativeHome: _nativeHomeCtrl.text.trim(),
-                          phone: _phoneCtrl.text.trim(),
-                          address: _addressCtrl.text.trim(),
-                          googleMapLink: _googleMapLinkCtrl.text.trim(),
-                          firms: _firms,
-                          whatsapp: _whatsappCtrl.text.trim(),
-                          instagram: _instagramCtrl.text.trim(),
-                          facebook: _facebookCtrl.text.trim(),
-                          tags: _tags,
-                          parentMid: _parentMidCtrl.text.trim(),
-                        );
-
-                        Navigator.pop(context);
-                      } catch (e) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                      } finally {
-                        setState(() => _loading = false);
-                      }
-                    },
-                    child: const Text('Add Member'),
-                  ),
-          ],
+          ),
         ),
-      ),
+        // Loading overlay
+        if (_loading)
+          Container(
+            color: Colors.black45,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: Colors.white),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Adding member...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
