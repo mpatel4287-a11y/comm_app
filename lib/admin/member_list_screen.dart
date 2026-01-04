@@ -373,7 +373,10 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   }
 
   Future<void> _loadMemberData() async {
-    final member = await MemberService().getMember(widget.memberId);
+    final member = await MemberService().getMember(
+      familyDocId: widget.familyDocId,
+      memberId: widget.memberId,
+    );
     if (member != null) {
       _fullNameCtrl.text = member.fullName;
       _surnameCtrl.text = member.surname;
@@ -530,6 +533,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                 if (!_formKey.currentState!.validate()) return;
 
                 await MemberService().updateMember(
+                  familyDocId: widget.familyDocId,
                   memberId: widget.memberId,
                   updates: {
                     'fullName': _fullNameCtrl.text.trim(),
@@ -571,6 +575,17 @@ class MemberListScreen extends StatefulWidget {
 class _MemberListScreenState extends State<MemberListScreen> {
   String _searchQuery = '';
   String _selectedTag = '';
+  late final Stream<QuerySnapshot> _membersStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _membersStream = FirebaseFirestore.instance
+        .collection('members')
+        .where('familyDocId', isEqualTo: widget.familyDocId)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -642,14 +657,24 @@ class _MemberListScreenState extends State<MemberListScreen> {
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('members')
-                  .where('familyDocId', isEqualTo: widget.familyDocId)
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
+              stream: _membersStream,
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error, color: Colors.red, size: 48),
+                        const SizedBox(height: 16),
+                        Text('Error: ${snapshot.error}'),
+                      ],
+                    ),
+                  );
                 }
 
                 if (snapshot.data!.docs.isEmpty) {
@@ -762,10 +787,14 @@ class _MemberListScreenState extends State<MemberListScreen> {
                                 ),
                               );
                               if (confirm == true) {
-                                await MemberService().deleteMember(doc.id);
+                                await MemberService().deleteMember(
+                                  familyDocId: widget.familyDocId,
+                                  memberId: doc.id,
+                                );
                               }
                             } else if (value == 'toggle') {
                               await MemberService().updateMember(
+                                familyDocId: widget.familyDocId,
                                 memberId: doc.id,
                                 updates: {'isActive': !isActive},
                               );

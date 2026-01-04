@@ -32,8 +32,15 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   }
 
   Future<void> _loadMember() async {
-    final member = await _memberService.getMember(widget.memberId);
-    final docId = await SessionManager.getFamilyDocId();
+    final docId = await SessionManager.getFamilyDocId() ?? '';
+    if (docId.isEmpty) {
+      setState(() => _loading = false);
+      return;
+    }
+    final member = await _memberService.getMember(
+      familyDocId: docId,
+      memberId: widget.memberId,
+    );
     setState(() {
       _member = member;
       _familyDocId = docId;

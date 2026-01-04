@@ -39,8 +39,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _loadUserData() async {
     final memberId = await SessionManager.getMemberId();
-    if (memberId != null) {
-      final member = await _memberService.getMember(memberId);
+    final familyDocId = await SessionManager.getFamilyDocId();
+    if (memberId != null && familyDocId != null) {
+      final member = await _memberService.getMember(
+        familyDocId: familyDocId,
+        memberId: memberId,
+      );
       setState(() {
         _currentUser = member;
         _loading = false;
@@ -384,13 +388,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
         if (photoUrl != null) {
           await _memberService.updateMember(
+            familyDocId: _currentUser!.familyDocId,
             memberId: _currentUser!.id,
             updates: {'photoUrl': photoUrl},
           );
 
           // Refresh user data
           final updatedMember = await _memberService.getMember(
-            _currentUser!.id,
+            familyDocId: _currentUser!.familyDocId,
+            memberId: _currentUser!.id,
           );
           setState(() {
             _currentUser = updatedMember;
@@ -433,13 +439,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
         if (photoUrl != null) {
           await _memberService.updateMember(
+            familyDocId: _currentUser!.familyDocId,
             memberId: _currentUser!.id,
             updates: {'photoUrl': photoUrl},
           );
 
           // Refresh user data
           final updatedMember = await _memberService.getMember(
-            _currentUser!.id,
+            familyDocId: _currentUser!.familyDocId,
+            memberId: _currentUser!.id,
           );
           setState(() {
             _currentUser = updatedMember;
@@ -478,12 +486,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
       // Update member to remove photo URL
       await _memberService.updateMember(
+        familyDocId: _currentUser!.familyDocId,
         memberId: _currentUser!.id,
         updates: {'photoUrl': ''},
       );
 
       // Refresh user data
-      final updatedMember = await _memberService.getMember(_currentUser!.id);
+      final updatedMember = await _memberService.getMember(
+        familyDocId: _currentUser!.familyDocId,
+        memberId: _currentUser!.id,
+      );
       setState(() {
         _currentUser = updatedMember;
       });

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/session_manager.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +18,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _loading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingSession();
+  }
+
+  Future<void> _checkExistingSession() async {
+    // Check if user is already logged in
+    final hasSession = await SessionManager.hasSession();
+    if (hasSession) {
+      final isAdmin = await SessionManager.getIsAdmin();
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          isAdmin == true ? '/admin' : '/home',
+        );
+      }
+    }
+  }
 
   Future<void> _login() async {
     setState(() {

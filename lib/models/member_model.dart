@@ -96,10 +96,11 @@ class MemberModel {
     return age;
   }
 
-  // ---------------- GENERATE MID ----------------
+  // ---------------- GENERATE MID (3-digit random integer) ----------------
   static String generateMid() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return 'M${timestamp.toString().substring(8)}';
+    // Generate a random 3-digit integer between 100 and 999
+    final random = DateTime.now().millisecondsSinceEpoch % 900 + 100;
+    return random.toString();
   }
 
   // ---------------- TO MAP ----------------
