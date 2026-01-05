@@ -201,7 +201,7 @@ class FamilyListScreen extends StatelessWidget {
                         ? Colors.grey
                         : Colors.blue.shade900,
                     child: Icon(
-                      isBlocked ? Icons.lock : Icons.family_restroom,
+                      isBlocked ? Icons.lock : Icons.people,
                       color: Colors.white,
                     ),
                   ),
@@ -244,8 +244,10 @@ class FamilyListScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            MemberListScreen(doc.id, data['familyName']),
+                        builder: (_) => MemberListScreen(
+                          familyDocId: doc.id,
+                          familyName: data['familyName'],
+                        ),
                       ),
                     );
                   },

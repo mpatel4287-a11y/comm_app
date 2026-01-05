@@ -64,7 +64,7 @@ class AnalyticsDashboard extends StatelessWidget {
                           child: Column(
                             children: [
                               const Icon(
-                                Icons.family_restroom,
+                                Icons.people,
                                 color: Colors.white,
                                 size: 32,
                               ),

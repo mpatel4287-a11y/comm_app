@@ -44,7 +44,7 @@ class MyApp extends StatelessWidget {
         '/admin/system-health': (_) => const SystemHealthScreen(),
         '/home': (_) => const UserDashboard(),
         '/user/settings': (_) => const SettingsScreen(),
-        '/user/member-detail': (_) => const MemberDetailScreen(memberId: ''),
+        '/user/member-detail': (_) => const MemberDetailScreen(memberId: '', familyDocId: null),
       },
       onGenerateRoute: (settings) {
         // Handle admin members route with arguments
@@ -60,8 +60,10 @@ class MyApp extends StatelessWidget {
           }
           final args = settings.arguments as Map<String, dynamic>;
           return MaterialPageRoute(
-            builder: (_) =>
-                MemberListScreen(args['familyDocId'], args['familyName']),
+            builder: (_) => MemberListScreen(
+              familyDocId: args['familyDocId'],
+              familyName: args['familyName'],
+            ),
           );
         }
         // Fallback for any unhandled route - go to login

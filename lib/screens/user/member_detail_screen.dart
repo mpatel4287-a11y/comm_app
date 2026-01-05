@@ -12,8 +12,9 @@ import 'qr_share_screen.dart';
 
 class MemberDetailScreen extends StatefulWidget {
   final String memberId;
+  final String? familyDocId;
 
-  const MemberDetailScreen({super.key, required this.memberId});
+  const MemberDetailScreen({super.key, required this.memberId, this.familyDocId});
 
   @override
   State<MemberDetailScreen> createState() => _MemberDetailScreenState();
@@ -32,7 +33,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   }
 
   Future<void> _loadMember() async {
-    final docId = await SessionManager.getFamilyDocId() ?? '';
+    final docId = widget.familyDocId ?? await SessionManager.getFamilyDocId() ?? '';
     if (docId.isEmpty) {
       setState(() => _loading = false);
       return;
@@ -224,10 +225,10 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                   CircleAvatar(
                     radius: 60,
                     backgroundColor: Colors.blue.shade900,
-                    backgroundImage: member.photoUrl.isNotEmpty
+                    backgroundImage: member.photoUrl.isNotEmpty && member.photoUrl.startsWith('http')
                         ? NetworkImage(member.photoUrl)
                         : null,
-                    child: member.photoUrl.isEmpty
+                    child: member.photoUrl.isEmpty || !member.photoUrl.startsWith('http')
                         ? Text(
                             member.fullName.isNotEmpty
                                 ? member.fullName[0].toUpperCase()
@@ -247,11 +248,14 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (member.surname.isNotEmpty)
-                    Text(
-                      member.surname,
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
+                  Text(
+                    'Member ID: ${member.mid}',
+                    style: const TextStyle(fontSize: 16, color: Colors.black54),
+                  ),
+                  Text(
+                    'Photo URL: ${member.photoUrl}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                   const SizedBox(height: 8),
                   if (member.tags.isNotEmpty)
                     Wrap(
@@ -269,25 +273,24 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
             _buildSectionHeader('Personal Information'),
             _buildDetailCard([
               _buildDetailRow('Member ID', member.mid),
+              _buildDetailRow('Full Name', member.fullName),
+              if (member.surname.isNotEmpty)
+                _buildDetailRow('Surname', member.surname),
+              if (member.fatherName.isNotEmpty)
+                _buildDetailRow('Father Name', member.fatherName),
+              if (member.motherName.isNotEmpty)
+                _buildDetailRow('Mother Name', member.motherName),
               _buildDetailRow('Age', '${member.age} years'),
               _buildDetailRow('Birth Date', member.birthDate),
-              _buildDetailRow(
-                'Date of Death',
-                member.tod.isEmpty ? '-' : member.tod,
-              ),
-              _buildDetailRow(
-                'Blood Group',
-                member.bloodGroup.isEmpty ? '-' : member.bloodGroup,
-              ),
+              if (member.tod.isNotEmpty)
+                _buildDetailRow('Date of Death', member.tod),
+              if (member.bloodGroup.isNotEmpty)
+                _buildDetailRow('Blood Group', member.bloodGroup),
               _buildDetailRow('Marriage Status', member.marriageStatus),
-              _buildDetailRow(
-                'Gotra',
-                member.gotra.isEmpty ? '-' : member.gotra,
-              ),
-              _buildDetailRow(
-                'Native Home',
-                member.nativeHome.isEmpty ? '-' : member.nativeHome,
-              ),
+              if (member.gotra.isNotEmpty)
+                _buildDetailRow('Gotra', member.gotra),
+              if (member.nativeHome.isNotEmpty)
+                _buildDetailRow('Native Home', member.nativeHome),
             ]),
 
             const SizedBox(height: 16),
@@ -296,9 +299,9 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
             _buildSectionHeader('Family Information'),
             _buildDetailCard([
               _buildDetailRow('Family Name', member.familyName),
-              _buildDetailRow('Family ID', member.familyId),
+              _buildDetailRow('DKT Family ID', member.familyId),
               if (member.parentMid.isNotEmpty)
-                _buildDetailRow('Parent Member', member.parentMid),
+                _buildDetailRow('Parent Member ID', member.parentMid),
             ]),
 
             const SizedBox(height: 16),
@@ -320,7 +323,7 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
             _buildSectionHeader('Social Media'),
             _buildDetailCard([
               if (member.whatsapp.isNotEmpty)
-                _buildSocialRow('WhatsApp', member.whatsapp, Icons.chat),
+                _buildSocialRow('WhatsApp', member.whatsapp, Icons.message),
               if (member.instagram.isNotEmpty)
                 _buildSocialRow(
                   'Instagram',
@@ -347,7 +350,30 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                         if ((firm['phone'] ?? '').isNotEmpty)
                           Text('Phone: ${firm['phone']}'),
                         if ((firm['mapLink'] ?? '').isNotEmpty)
-                          const Text('View on Map'),
+                          GestureDetector(
+                            onTap: () async {
+                              final url = firm['mapLink'];
+                              if (url != null && url.isNotEmpty) {
+                                final uri = Uri.parse(url);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                }
+                              }
+                            },
+                            child: Row(
+                              children: [
+                                const Icon(Icons.map, color: Colors.blue, size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'View on Map',
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                     trailing: const Icon(Icons.business),
@@ -356,12 +382,14 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
               ),
             ],
 
+            const SizedBox(height: 16),
+
+            // Social Media
+
             const SizedBox(height: 24),
           ],
         ),
       ),
-      // Quick Actions with Floating Action Buttons
-      floatingActionButton: _buildQuickActions(),
     );
   }
 

@@ -39,6 +39,7 @@ class MemberService {
     required String facebook,
     required List<String> tags,
     required String parentMid,
+    String photoUrl = '',
   }) async {
     final age = MemberModel.calculateAge(birthDate);
 
@@ -86,7 +87,7 @@ class MemberService {
       whatsapp: whatsapp.trim(),
       instagram: instagram.trim(),
       facebook: facebook.trim(),
-      photoUrl: '',
+      photoUrl: photoUrl.trim(),
       role: 'member',
       tags: cleanedTags,
       isActive: true,

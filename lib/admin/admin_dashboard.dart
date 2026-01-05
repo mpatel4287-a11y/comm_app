@@ -53,7 +53,7 @@ class AdminDashboard extends StatelessWidget {
             const SizedBox(height: 12),
             _buildDashboardCard(
               context,
-              icon: Icons.family_restroom,
+              icon: Icons.people,
               title: 'Families',
               subtitle: 'Manage family records',
               color: Colors.blue,

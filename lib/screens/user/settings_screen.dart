@@ -101,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.family_restroom),
+                  leading: const Icon(Icons.people),
                   title: const Text('View Family Members'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
