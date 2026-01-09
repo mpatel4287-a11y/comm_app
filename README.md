@@ -1,6 +1,5 @@
 # comm_app
 
-please help me to complete this project, devilhomeing@gmail.com.
 
 ## Getting Started
 
