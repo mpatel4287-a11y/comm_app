@@ -7,8 +7,10 @@ class SessionManager {
   static const _keyRole = 'role';
   static const _keyFamilyName = 'family_name';
   static const _keyMemberId = 'member_id';
+  static const _keySubFamilyDocId = 'sub_family_doc_id';
+  static const _keyMemberDocId = 'member_doc_id';
 
-  // SAVE SESSION
+  // SAVE SESSION (Family level)
   static Future<void> saveSession({
     required String familyDocId,
     required int familyId,
@@ -24,6 +26,18 @@ class SessionManager {
     await prefs.setString(_keyRole, role);
     await prefs.setString(_keyFamilyName, familyName);
     await prefs.setString(_keyMemberId, memberId);
+  }
+
+  // SAVE MEMBER SESSION (With subFamily info)
+  static Future<void> saveMemberSession({
+    required String mainFamilyDocId,
+    required String subFamilyDocId,
+    required String memberDocId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyFamilyDocId, mainFamilyDocId);
+    await prefs.setString(_keySubFamilyDocId, subFamilyDocId);
+    await prefs.setString(_keyMemberDocId, memberDocId);
   }
 
   // GETTERS
@@ -55,6 +69,16 @@ class SessionManager {
   static Future<String?> getMemberId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyMemberId);
+  }
+
+  static Future<String?> getSubFamilyDocId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keySubFamilyDocId);
+  }
+
+  static Future<String?> getMemberDocId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyMemberDocId);
   }
 
   // CHECK IF SESSION EXISTS

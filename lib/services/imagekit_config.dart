@@ -10,7 +10,7 @@ class ImageKitConfig {
   // Replace these with your actual ImageKit credentials
   static const String publicKey = 'public_C0oJSDHjDCn+Mm6ZsOuQMURh5so=';
   static const String privateKey = 'private_VULQsScUEe7UQ5//sNYIIGGSnis=';
-  static const String urlEndpoint = ' https://ik.imagekit.io/mcn43wef4p';
+  static const String urlEndpoint = 'https://ik.imagekit.io/mcn43wef4p';
 
   // Configuration for profile photos
   static const String profilePhotoFolder = 'profile_photos';

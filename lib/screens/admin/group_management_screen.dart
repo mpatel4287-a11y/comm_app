@@ -106,6 +106,8 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                             id: memberId,
                             mid: '',
                             familyDocId: '',
+                            subFamilyDocId: '',
+                            subFamilyId: '',
                             familyId: '',
                             familyName: '',
                             fullName: 'Unknown',

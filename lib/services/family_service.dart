@@ -1,16 +1,40 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'counter_service.dart';
 
 class FamilyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final CounterService _counterService = CounterService();
 
-  // ---------------- ADD FAMILY ----------------
+  // ---------------- ADD FAMILY (Auto-generate 2-digit ID) ----------------
   Future<void> addFamily({
-    required int familyId,
     required String familyName,
     required String password,
   }) async {
-    if (familyId.toString().length != 6) {
-      throw Exception('Family ID must be 6 digits');
+    if (password.length != 6) {
+      throw Exception('Password must be 6 digits');
+    }
+
+    // Auto-generate 2-digit familyId
+    final familyId = await _counterService.getNextFamilyId();
+
+    await _firestore.collection('families').add({
+      'familyId': familyId,
+      'familyName': familyName,
+      'password': password,
+      'isAdmin': false,
+      'isBlocked': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ---------------- ADD FAMILY WITH MANUAL ID (Legacy - for migration) ----------------
+  Future<void> addFamilyWithManualId({
+    required String familyId,
+    required String familyName,
+    required String password,
+  }) async {
+    if (familyId.length != 2) {
+      throw Exception('Family ID must be 2 digits');
     }
     if (password.length != 6) {
       throw Exception('Password must be 6 digits');

@@ -62,11 +62,20 @@ class PhotoService {
 
   /// Get optimized/thumbnail URL for profile photo
   String getOptimizedUrl(String photoUrl, {int width = 200, int height = 200}) {
-    return _imageKitService.getOptimizedUrl(
+    // Format the URL properly for ImageKit
+    final formattedUrl = _imageKitService.formatImageKitUrl(
       photoUrl,
       width: width,
       height: height,
     );
+
+    // Debug logging
+    if (photoUrl.isNotEmpty) {
+      print('PhotoService - Original URL: $photoUrl');
+      print('PhotoService - Formatted URL: $formattedUrl');
+    }
+
+    return formattedUrl;
   }
 
   /// Get thumbnail URL for list views

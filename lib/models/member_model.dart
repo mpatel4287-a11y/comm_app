@@ -3,9 +3,11 @@
 class MemberModel {
   // Identity
   final String id;
-  final String mid; // unique member ID
+  final String mid; // unique member ID (format: F{XX}-S{XX}-{XXX})
   final String familyDocId;
-  final String familyId;
+  final String subFamilyDocId; // Reference to sub-family document
+  final String subFamilyId; // 2-digit sub-family ID (e.g., "01", "02")
+  final String familyId; // 2-digit family prefix (e.g., "01", "02")
   final String familyName;
 
   // Personal
@@ -48,6 +50,8 @@ class MemberModel {
     required this.id,
     required this.mid,
     required this.familyDocId,
+    required this.subFamilyDocId,
+    required this.subFamilyId,
     required this.familyId,
     required this.familyName,
     required this.fullName,
@@ -96,11 +100,21 @@ class MemberModel {
     return age;
   }
 
-  // ---------------- GENERATE MID (3-digit random integer) ----------------
-  static String generateMid() {
+  // ---------------- GENERATE MID (Pattern: F{XX}-S{XX}-{XXX}) ----------------
+  // Example: F13-S01-123 where:
+  // - F13 = "F" + first 2 digits of family ID (e.g., family ID "132345" → "13")
+  // - S01 = "S" + 2-digit subfamily number (padded with leading zero if needed)
+  // - 123 = auto-generated 3-digit random member number
+  static String generateMid(String familyId, String subFamilyId) {
     // Generate a random 3-digit integer between 100 and 999
     final random = DateTime.now().millisecondsSinceEpoch % 900 + 100;
-    return random.toString();
+    // Ensure familyId is 2 digits (use first 2 digits, or pad with leading zero)
+    final shortFamilyId = familyId.length >= 2
+        ? familyId.substring(0, 2)
+        : familyId.padLeft(2, '0');
+    // Ensure subFamilyId is 2 digits (pad with leading zero if needed)
+    final formattedSubFamilyId = subFamilyId.padLeft(2, '0');
+    return 'F$shortFamilyId-S$formattedSubFamilyId-$random';
   }
 
   // ---------------- TO MAP ----------------
@@ -108,6 +122,8 @@ class MemberModel {
     final map = <String, dynamic>{
       'mid': mid,
       'familyDocId': familyDocId,
+      'subFamilyDocId': subFamilyDocId,
+      'subFamilyId': subFamilyId,
       'familyId': familyId,
       'familyName': familyName,
       'fullName': fullName,
@@ -146,6 +162,8 @@ class MemberModel {
       id: id,
       mid: data['mid'] ?? '',
       familyDocId: data['familyDocId'] ?? '',
+      subFamilyDocId: data['subFamilyDocId'] ?? '',
+      subFamilyId: data['subFamilyId'] ?? '',
       familyId: data['familyId'] ?? '',
       familyName: data['familyName'] ?? '',
       fullName: data['fullName'] ?? '',
@@ -179,6 +197,13 @@ class MemberModel {
 
   // ---------------- COPY WITH ----------------
   MemberModel copyWith({
+    String? id,
+    String? mid,
+    String? familyDocId,
+    String? subFamilyDocId,
+    String? subFamilyId,
+    String? familyId,
+    String? familyName,
     String? fullName,
     String? surname,
     String? fatherName,
@@ -203,11 +228,13 @@ class MemberModel {
     String? tod,
   }) {
     return MemberModel(
-      id: id,
-      mid: mid,
-      familyDocId: familyDocId,
-      familyId: familyId,
-      familyName: familyName,
+      id: id ?? this.id,
+      mid: mid ?? this.mid,
+      familyDocId: familyDocId ?? this.familyDocId,
+      subFamilyDocId: subFamilyDocId ?? this.subFamilyDocId,
+      subFamilyId: subFamilyId ?? this.subFamilyId,
+      familyId: familyId ?? this.familyId,
+      familyName: familyName ?? this.familyName,
       fullName: fullName ?? this.fullName,
       surname: surname ?? this.surname,
       fatherName: fatherName ?? this.fatherName,

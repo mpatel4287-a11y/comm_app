@@ -6,19 +6,24 @@ import '../models/member_model.dart';
 class MemberService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Get members subcollection reference for a family
+  // Get members subcollection reference for a sub-family
   CollectionReference<Map<String, dynamic>> _getMembersCollection(
-    String familyDocId,
+    String mainFamilyDocId,
+    String subFamilyDocId,
   ) {
     return _firestore
         .collection('families')
-        .doc(familyDocId)
+        .doc(mainFamilyDocId)
+        .collection('subfamilies')
+        .doc(subFamilyDocId)
         .collection('members');
   }
 
   // ---------------- ADD MEMBER ----------------
   Future<void> addMember({
-    required String familyDocId,
+    required String mainFamilyDocId,
+    required String subFamilyDocId,
+    required String subFamilyId,
     required String familyId,
     required String familyName,
     required String fullName,
@@ -61,13 +66,21 @@ class MemberService {
         )
         .toList();
 
-    // Create member in the family's subcollection
-    final memberRef = _getMembersCollection(familyDocId).doc();
+    // Create member in sub-family's subcollection
+    final memberRef = _getMembersCollection(
+      mainFamilyDocId,
+      subFamilyDocId,
+    ).doc();
+
+    // Generate MID using new pattern: F{XX}-S{XX}-{XXX}
+    final mid = MemberModel.generateMid(familyId, subFamilyId);
 
     final member = MemberModel(
       id: memberRef.id,
-      mid: MemberModel.generateMid(),
-      familyDocId: familyDocId,
+      mid: mid,
+      familyDocId: mainFamilyDocId,
+      subFamilyDocId: subFamilyDocId,
+      subFamilyId: subFamilyId,
       familyId: familyId,
       familyName: familyName,
       fullName: fullName.trim(),
@@ -100,7 +113,8 @@ class MemberService {
 
   // ---------------- UPDATE MEMBER ----------------
   Future<void> updateMember({
-    required String familyDocId,
+    required String mainFamilyDocId,
+    required String subFamilyDocId,
     required String memberId,
     required Map<String, dynamic> updates,
   }) async {
@@ -118,32 +132,46 @@ class MemberService {
       updates['age'] = MemberModel.calculateAge(updates['birthDate'] as String);
     }
 
-    await _getMembersCollection(familyDocId).doc(memberId).update(updates);
+    await _getMembersCollection(
+      mainFamilyDocId,
+      subFamilyDocId,
+    ).doc(memberId).update(updates);
   }
 
   // ---------------- DELETE MEMBER ----------------
   Future<void> deleteMember({
-    required String familyDocId,
+    required String mainFamilyDocId,
+    required String subFamilyDocId,
     required String memberId,
   }) async {
-    await _getMembersCollection(familyDocId).doc(memberId).delete();
+    await _getMembersCollection(
+      mainFamilyDocId,
+      subFamilyDocId,
+    ).doc(memberId).delete();
   }
 
   // ---------------- GET MEMBER ----------------
   Future<MemberModel?> getMember({
-    required String familyDocId,
+    required String mainFamilyDocId,
+    required String subFamilyDocId,
     required String memberId,
   }) async {
-    final doc = await _getMembersCollection(familyDocId).doc(memberId).get();
+    final doc = await _getMembersCollection(
+      mainFamilyDocId,
+      subFamilyDocId,
+    ).doc(memberId).get();
     if (doc.exists) {
       return MemberModel.fromMap(doc.id, doc.data()!);
     }
     return null;
   }
 
-  // ---------------- GET MEMBERS BY FAMILY ----------------
-  Stream<List<MemberModel>> streamFamilyMembers(String familyDocId) {
-    return _getMembersCollection(familyDocId)
+  // ---------------- GET MEMBERS BY SUB-FAMILY ----------------
+  Stream<List<MemberModel>> streamSubFamilyMembers(
+    String mainFamilyDocId,
+    String subFamilyDocId,
+  ) {
+    return _getMembersCollection(mainFamilyDocId, subFamilyDocId)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map(

@@ -1,31 +1,29 @@
-// ignore_for_file: prefer_final_fields, deprecated_member_use, use_build_context_synchronously
+// ignore_for_file: prefer_final_fields, deprecated_member_use, use_build_context_synchronously, avoid_print, depend_on_referenced_packages, unused_element, unused_field
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:crypto/crypto.dart';
-import '../models/member_model.dart';
-import '../services/family_service.dart';
 import '../services/imagekit_config.dart';
 import '../services/member_service.dart';
-import '../services/session_manager.dart';
-import 'package:http/http.dart' as http;
+import '../services/photo_service.dart';
+import '../screens/user/member_detail_screen.dart';
 
 // Placeholder for AddMemberScreen
 class AddMemberScreen extends StatefulWidget {
   final String familyDocId;
   final String familyName;
+  final String? subFamilyDocId; // NEW: Optional sub-family ID
 
   const AddMemberScreen({
     super.key,
     required this.familyDocId,
     required this.familyName,
+    this.subFamilyDocId,
   });
 
   @override
@@ -51,7 +49,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   final _parentMidCtrl = TextEditingController();
   final _dktFamilyIdCtrl = TextEditingController();
   String? _profilePhotoUrl;
+  String? _pendingPhotoPath; // Store for upload after member creation
+  String? _pendingPhotoId;
   final ImagePicker _imagePicker = ImagePicker();
+  final PhotoService _photoService = PhotoService();
 
   String _bloodGroup = '';
   String _marriageStatus = 'unmarried';
@@ -68,8 +69,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   Future<void> _launchInstagram() async {
     final username = _instagramCtrl.text.trim();
-    final url = username.startsWith('https://') 
-        ? username 
+    final url = username.startsWith('https://')
+        ? username
         : 'https://instagram.com/$username';
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url));
@@ -78,8 +79,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   Future<void> _launchFacebook() async {
     final username = _facebookCtrl.text.trim();
-    final url = username.startsWith('https://') 
-        ? username 
+    final url = username.startsWith('https://')
+        ? username
         : 'https://facebook.com/$username';
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url));
@@ -100,66 +101,14 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         maxHeight: ImageKitConfig.maxImageHeight.toDouble(),
         imageQuality: ImageKitConfig.imageQuality,
       );
-      
+
       if (image != null) {
-        // Upload to ImageKit
-        try {
-          final fileName = '${DateTime.now().millisecondsSinceEpoch}_${widget.familyDocId}_${widget.familyName}.jpg';
-          
-          // Create multipart request
-          final request = http.MultipartRequest(
-            'POST',
-            Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
-          );
-          
-          // Add file to request
-          request.files.add(await http.MultipartFile.fromPath(
-            image.path,
-            filename: fileName,
-          ));
-          
-          // Add headers for ImageKit authentication
-          request.headers.addAll({
-            'Accept': 'application/json',
-          });
-          
-          // Add ImageKit authentication to form data
-          request.fields['publicKey'] = ImageKitConfig.publicKey;
-          request.fields['signature'] = _generateImageKitSignature(
-            fileName,
-            ImageKitConfig.privateKey,
-          );
-          request.fields['expire'] = (DateTime.now().add(const Duration(hours: 24)).millisecondsSinceEpoch.toString();
-          request.fields['folder'] = ImageKitConfig.profilePhotoFolder;
-          
-          // Send request
-          final response = await request.send();
-          
-          if (response.statusCode == 200) {
-            final responseData = json.decode(response.bodyBytes);
-            final imageUrl = responseData['url'];
-            print('ImageKit upload successful: $imageUrl');
-            
-            setState(() {
-              _profilePhotoUrl = imageUrl;
-            });
-          } else {
-            print('ImageKit upload failed: ${response.statusCode}');
-            print('Response body: ${response.body}');
-            
-            // Fallback to local path if upload fails
-            setState(() {
-              _profilePhotoUrl = image.path;
-            });
-          }
-        } catch (e) {
-          print('ImageKit upload error: $e');
-          
-          // Fallback to local path if upload fails
-          setState(() {
-            _profilePhotoUrl = image.path;
-          });
-        }
+        // Store the photo for upload after member creation
+        // This allows us to get a member ID first for naming
+        setState(() {
+          _pendingPhotoPath = image.path;
+          _profilePhotoUrl = null; // Will be set after upload
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -187,10 +136,44 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       final familyData = familyDoc.data() as Map<String, dynamic>;
       final familyId = familyData['familyId'].toString();
 
+      // Get subFamilyId if subFamilyDocId is provided
+      String subFamilyId = '';
+      if (widget.subFamilyDocId != null) {
+        final subFamilyDoc = await FirebaseFirestore.instance
+            .collection('families')
+            .doc(widget.familyDocId)
+            .collection('subfamilies')
+            .doc(widget.subFamilyDocId)
+            .get();
+        subFamilyId = subFamilyDoc.data()?['subFamilyId']?.toString() ?? '';
+      }
+
+      // Upload photo first if there's a pending photo
+      String photoUrl = '';
+      if (_pendingPhotoPath != null && _pendingPhotoPath!.isNotEmpty) {
+        try {
+          final photoFile = XFile(_pendingPhotoPath!);
+          // Generate a temporary member ID for the photo naming
+          final tempMemberId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+          final uploadedUrl = await _photoService.uploadProfilePhoto(
+            memberId: tempMemberId,
+            image: photoFile,
+          );
+          if (uploadedUrl != null) {
+            photoUrl = uploadedUrl;
+          }
+        } catch (e) {
+          print('Error uploading photo: $e');
+          // Continue without photo on error
+        }
+      }
+
       await MemberService().addMember(
-        familyDocId: widget.familyDocId,
-        familyId: _dktFamilyIdCtrl.text.trim().isEmpty 
-            ? familyId 
+        mainFamilyDocId: widget.familyDocId,
+        subFamilyDocId: widget.subFamilyDocId ?? '',
+        subFamilyId: subFamilyId,
+        familyId: _dktFamilyIdCtrl.text.trim().isEmpty
+            ? familyId
             : _dktFamilyIdCtrl.text.trim(),
         familyName: widget.familyName,
         fullName: _fullNameCtrl.text.trim(),
@@ -211,7 +194,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         facebook: _facebookCtrl.text.trim(),
         tags: _tags,
         parentMid: _parentMidCtrl.text.trim(),
-        photoUrl: _profilePhotoUrl ?? '',
+        photoUrl: photoUrl,
       );
 
       if (mounted) {
@@ -233,6 +216,23 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     }
   }
 
+  // Helper function to generate ImageKit signature
+  String _generateImageKitSignature(String fileName, String privateKey) {
+    final key = utf8.encode(privateKey);
+    final expiration = (DateTime.now()
+        .add(const Duration(hours: 24))
+        .millisecondsSinceEpoch
+        .toString());
+
+    final policy = 'image/${fileName.substring(0, fileName.lastIndexOf('.'))}';
+    final signatureData = '$policy\n$expiration\n';
+
+    final hmacSha256 = Hmac(sha256, key);
+    final signature = hmacSha256.convert(utf8.encode(signatureData));
+
+    return base64.encode(signature.bytes);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -249,310 +249,321 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                // Profile Photo
-                Center(
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: _pickProfilePhoto,
-                        child: CircleAvatar(
-                          radius: 60,
-                          backgroundColor: Colors.blue.shade900,
-                          backgroundImage: _profilePhotoUrl != null && _profilePhotoUrl!.isNotEmpty
-                              ? (_profilePhotoUrl!.startsWith('http') 
-                                  ? NetworkImage(_profilePhotoUrl!)
-                                  : FileImage(File(_profilePhotoUrl!)))
-                              : null,
-                          child: _profilePhotoUrl == null || _profilePhotoUrl!.isEmpty
-                              ? const Icon(
-                                  Icons.camera_alt,
-                                  size: 36,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Tap to add profile photo',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Personal Info
-                const Text(
-                  'Personal Information',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _fullNameCtrl,
-                  decoration: const InputDecoration(labelText: 'Full Name *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _surnameCtrl,
-                  decoration: const InputDecoration(labelText: 'Surname'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _fatherNameCtrl,
-                  decoration: const InputDecoration(labelText: 'Father Name'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _motherNameCtrl,
-                  decoration: const InputDecoration(labelText: 'Mother Name'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _gotraCtrl,
-                  decoration: const InputDecoration(labelText: 'Gotra'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _birthDateCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Birth Date (dd/MM/yyyy) *',
-                    hintText: '15/08/1990',
-                  ),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _bloodGroup.isEmpty ? null : _bloodGroup,
-                  decoration: const InputDecoration(labelText: 'Blood Group'),
-                  items: ['', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']
-                      .map(
-                        (bg) => DropdownMenuItem(
-                          value: bg,
-                          child: Text(bg.isEmpty ? 'Select' : bg),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => _bloodGroup = v ?? ''),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _marriageStatus,
-                  decoration: const InputDecoration(
-                    labelText: 'Marriage Status',
-                  ),
-                  items: ['unmarried', 'married']
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => _marriageStatus = v ?? 'unmarried'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _nativeHomeCtrl,
-                  decoration: const InputDecoration(labelText: 'Native Home'),
-                ),
-
-                // Contact Info
-                const SizedBox(height: 20),
-                const Text(
-                  'Contact Information',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _phoneCtrl,
-                  decoration: const InputDecoration(labelText: 'Phone *'),
-                  keyboardType: TextInputType.phone,
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _addressCtrl,
-                  decoration: const InputDecoration(labelText: 'Address'),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _googleMapLinkCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Google Map Link',
-                    hintText: 'https://maps.google.com/...',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _whatsappCtrl,
-                  decoration: const InputDecoration(labelText: 'WhatsApp'),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _instagramCtrl,
-                  decoration: const InputDecoration(labelText: 'Instagram'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _facebookCtrl,
-                  decoration: const InputDecoration(labelText: 'Facebook'),
-                ),
-
-                // Firms/Business Details
-                const SizedBox(height: 20),
-                const Text(
-                  'Firms / Business Details',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                ..._firms.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final firm = entry.value;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  // Profile Photo
+                  Center(
                     child: Column(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                initialValue: firm['name'],
-                                decoration: const InputDecoration(
-                                  labelText: 'Firm Name',
-                                  border: InputBorder.none,
-                                ),
-                                onChanged: (value) {
-                                  _firms[index]['name'] = value;
-                                },
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  _firms.removeAt(index);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                        TextFormField(
-                          initialValue: firm['phone'],
-                          decoration: const InputDecoration(
-                            labelText: 'Phone',
-                            border: InputBorder.none,
+                        GestureDetector(
+                          onTap: _pickProfilePhoto,
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundColor: Colors.blue.shade900,
+                            backgroundImage:
+                                _profilePhotoUrl != null &&
+                                    _profilePhotoUrl!.isNotEmpty
+                                ? (_profilePhotoUrl!.startsWith('http')
+                                      ? NetworkImage(_profilePhotoUrl!)
+                                      : FileImage(File(_profilePhotoUrl!)))
+                                : null,
+                            child:
+                                _profilePhotoUrl == null ||
+                                    _profilePhotoUrl!.isEmpty
+                                ? const Icon(
+                                    Icons.camera_alt,
+                                    size: 36,
+                                    color: Colors.white,
+                                  )
+                                : null,
                           ),
-                          onChanged: (value) {
-                            _firms[index]['phone'] = value;
-                          },
                         ),
-                        TextFormField(
-                          initialValue: firm['mapLink'],
-                          decoration: const InputDecoration(
-                            labelText: 'Map Link',
-                            border: InputBorder.none,
-                          ),
-                          onChanged: (value) {
-                            _firms[index]['mapLink'] = value;
-                          },
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Tap to add profile photo',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
                     ),
-                  );
-                }).toList(),
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _firms.add({'name': '', 'phone': '', 'mapLink': ''});
-                    });
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Firm'),
-                ),
-
-                // Family Information
-                const SizedBox(height: 20),
-                const Text(
-                  'Family Information',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _dktFamilyIdCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'DKT Family ID',
-                    hintText: 'Enter DKT Family ID',
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _parentMidCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Parent Member ID',
-                    hintText: 'Enter parent MID (optional)',
-                  ),
-                ),
+                  const SizedBox(height: 20),
 
-                // Tags (Admin Only)
-                const SizedBox(height: 20),
-                const Text(
-                  'Tags',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-            // Visible tag input field
-            TextFormField(
-              controller: _tagsCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Add Tag (max 15 chars)',
-                hintText: 'Enter tag and press + button',
-              ),
-              maxLength: 15,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: const SizedBox.shrink(), // Empty space
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    final v = _tagsCtrl.text.trim();
-                    if (v.isNotEmpty &&
-                        v.length <= 15 &&
-                        !_tags.contains(v)) {
+                  // Personal Info
+                  const Text(
+                    'Personal Information',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _fullNameCtrl,
+                    decoration: const InputDecoration(labelText: 'Full Name *'),
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _surnameCtrl,
+                    decoration: const InputDecoration(labelText: 'Surname'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _fatherNameCtrl,
+                    decoration: const InputDecoration(labelText: 'Father Name'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _motherNameCtrl,
+                    decoration: const InputDecoration(labelText: 'Mother Name'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _gotraCtrl,
+                    decoration: const InputDecoration(labelText: 'Gotra'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _birthDateCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Birth Date (dd/MM/yyyy) *',
+                      hintText: '15/08/1990',
+                    ),
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _bloodGroup.isEmpty ? null : _bloodGroup,
+                    decoration: const InputDecoration(labelText: 'Blood Group'),
+                    items:
+                        ['', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']
+                            .map(
+                              (bg) => DropdownMenuItem(
+                                value: bg,
+                                child: Text(bg.isEmpty ? 'Select' : bg),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: (v) => setState(() => _bloodGroup = v ?? ''),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _marriageStatus,
+                    decoration: const InputDecoration(
+                      labelText: 'Marriage Status',
+                    ),
+                    items: ['unmarried', 'married']
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _marriageStatus = v ?? 'unmarried'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _nativeHomeCtrl,
+                    decoration: const InputDecoration(labelText: 'Native Home'),
+                  ),
+
+                  // Contact Info
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Contact Information',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _phoneCtrl,
+                    decoration: const InputDecoration(labelText: 'Phone *'),
+                    keyboardType: TextInputType.phone,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _addressCtrl,
+                    decoration: const InputDecoration(labelText: 'Address'),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _googleMapLinkCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Google Map Link',
+                      hintText: 'https://maps.google.com/...',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _whatsappCtrl,
+                    decoration: const InputDecoration(labelText: 'WhatsApp'),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _instagramCtrl,
+                    decoration: const InputDecoration(labelText: 'Instagram'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _facebookCtrl,
+                    decoration: const InputDecoration(labelText: 'Facebook'),
+                  ),
+
+                  // Firms/Business Details
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Firms / Business Details',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  ..._firms.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final firm = entry.value;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  initialValue: firm['name'],
+                                  decoration: const InputDecoration(
+                                    labelText: 'Firm Name',
+                                    border: InputBorder.none,
+                                  ),
+                                  onChanged: (value) {
+                                    _firms[index]['name'] = value;
+                                  },
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _firms.removeAt(index);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                          TextFormField(
+                            initialValue: firm['phone'],
+                            decoration: const InputDecoration(
+                              labelText: 'Phone',
+                              border: InputBorder.none,
+                            ),
+                            onChanged: (value) {
+                              _firms[index]['phone'] = value;
+                            },
+                          ),
+                          TextFormField(
+                            initialValue: firm['mapLink'],
+                            decoration: const InputDecoration(
+                              labelText: 'Map Link',
+                              border: InputBorder.none,
+                            ),
+                            onChanged: (value) {
+                              _firms[index]['mapLink'] = value;
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  TextButton.icon(
+                    onPressed: () {
                       setState(() {
-                        _tags.add(v);
-                        _tagsCtrl.clear();
+                        _firms.add({'name': '', 'phone': '', 'mapLink': ''});
                       });
-                    }
-                  },
-                ),
-              ],
-            ),
-            if (_tags.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                children: _tags.map((tag) {
-                  return Chip(
-                    label: Text(tag),
-                    onDeleted: () => setState(() => _tags.remove(tag)),
-                  );
-                }).toList(),
-              ),
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Firm'),
+                  ),
 
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _submitForm,
-                  child: const Text('Add Member'),
-                ),
-                const SizedBox(height: 24),
+                  // Family Information
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Family Information',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _dktFamilyIdCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'DKT Family ID',
+                      hintText: 'Enter DKT Family ID',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _parentMidCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Parent Member ID',
+                      hintText: 'Enter parent MID (optional)',
+                    ),
+                  ),
+
+                  // Tags (Admin Only)
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Tags',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  // Visible tag input field
+                  TextFormField(
+                    controller: _tagsCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Add Tag (max 15 chars)',
+                      hintText: 'Enter tag and press + button',
+                    ),
+                    maxLength: 15,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: const SizedBox.shrink(), // Empty space
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: () {
+                          final v = _tagsCtrl.text.trim();
+                          if (v.isNotEmpty &&
+                              v.length <= 15 &&
+                              !_tags.contains(v)) {
+                            setState(() {
+                              _tags.add(v);
+                              _tagsCtrl.clear();
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  if (_tags.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      children: _tags.map((tag) {
+                        return Chip(
+                          label: Text(tag),
+                          onDeleted: () => setState(() => _tags.remove(tag)),
+                        );
+                      }).toList(),
+                    ),
+
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _submitForm,
+                    child: const Text('Add Member'),
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -588,11 +599,13 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 class EditMemberScreen extends StatefulWidget {
   final String memberId;
   final String familyDocId;
+  final String? subFamilyDocId; // NEW: Optional sub-family ID
 
   const EditMemberScreen({
     super.key,
     required this.memberId,
     required this.familyDocId,
+    this.subFamilyDocId,
   });
 
   @override
@@ -634,8 +647,8 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 
   Future<void> _launchInstagram() async {
     final username = _instagramCtrl.text.trim();
-    final url = username.startsWith('https://') 
-        ? username 
+    final url = username.startsWith('https://')
+        ? username
         : 'https://instagram.com/$username';
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url));
@@ -644,8 +657,8 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 
   Future<void> _launchFacebook() async {
     final username = _facebookCtrl.text.trim();
-    final url = username.startsWith('https://') 
-        ? username 
+    final url = username.startsWith('https://')
+        ? username
         : 'https://facebook.com/$username';
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url));
@@ -666,53 +679,60 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
         maxHeight: ImageKitConfig.maxImageHeight.toDouble(),
         imageQuality: ImageKitConfig.imageQuality,
       );
-      
+
       if (image != null) {
         // Upload to ImageKit
         try {
-          final fileName = '${DateTime.now().millisecondsSinceEpoch}_${widget.familyDocId}_${widget.memberId}.jpg';
-          
+          final fileName =
+              '${DateTime.now().millisecondsSinceEpoch}_${widget.familyDocId}_${widget.memberId}.jpg';
+
           // Create multipart request
           final request = http.MultipartRequest(
             'POST',
             Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
           );
-          
+
           // Add file to request
-          request.files.add(await http.MultipartFile.fromPath(
-            image.path,
-            filename: fileName,
-          ));
-          
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'file',
+              image.path,
+              filename: fileName,
+            ),
+          );
+
           // Add headers for ImageKit authentication
-          request.headers.addAll({
-            'Accept': 'application/json',
-          });
-          
+          request.headers.addAll({'Accept': 'application/json'});
+
           // Add ImageKit authentication to form data
           request.fields['publicKey'] = ImageKitConfig.publicKey;
           request.fields['signature'] = _generateImageKitSignature(
             fileName,
             ImageKitConfig.privateKey,
           );
-          request.fields['expire'] = (DateTime.now().add(const Duration(hours: 24)).millisecondsSinceEpoch.toString();
+          request.fields['expire'] = (DateTime.now()
+              .add(const Duration(hours: 24))
+              .millisecondsSinceEpoch
+              .toString());
           request.fields['folder'] = ImageKitConfig.profilePhotoFolder;
-          
+
           // Send request
           final response = await request.send();
-          
+
           if (response.statusCode == 200) {
-            final responseData = json.decode(response.bodyBytes);
+            final responseBody = await response.stream.bytesToString();
+            final responseData = json.decode(responseBody);
             final imageUrl = responseData['url'];
             print('ImageKit upload successful: $imageUrl');
-            
+
             setState(() {
               _profilePhotoUrl = imageUrl;
             });
           } else {
             print('ImageKit upload failed: ${response.statusCode}');
-            print('Response body: ${response.body}');
-            
+            final responseBody = await response.stream.bytesToString();
+            print('Response body: $responseBody');
+
             // Fallback to local path if upload fails
             setState(() {
               _profilePhotoUrl = image.path;
@@ -720,7 +740,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
           }
         } catch (e) {
           print('ImageKit upload error: $e');
-          
+
           // Fallback to local path if upload fails
           setState(() {
             _profilePhotoUrl = image.path;
@@ -747,7 +767,8 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 
   Future<void> _loadMemberData() async {
     final member = await MemberService().getMember(
-      familyDocId: widget.familyDocId,
+      mainFamilyDocId: widget.familyDocId,
+      subFamilyDocId: widget.subFamilyDocId ?? '',
       memberId: widget.memberId,
     );
     if (member != null) {
@@ -778,14 +799,17 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   // Helper function to generate ImageKit signature
   String _generateImageKitSignature(String fileName, String privateKey) {
     final key = utf8.encode(privateKey);
-    final expiration = (DateTime.now().add(const Duration(hours: 24)).millisecondsSinceEpoch.toString());
-    
+    final expiration = (DateTime.now()
+        .add(const Duration(hours: 24))
+        .millisecondsSinceEpoch
+        .toString());
+
     final policy = 'image/${fileName.substring(0, fileName.lastIndexOf('.'))}';
     final signatureData = '$policy\n$expiration\n';
-    
+
     final hmacSha256 = Hmac(sha256, key);
     final signature = hmacSha256.convert(utf8.encode(signatureData));
-    
+
     return base64.encode(signature.bytes);
   }
 
@@ -804,400 +828,416 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            // Profile Photo
-            Center(
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: _pickProfilePhoto,
-                    child: CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.blue.shade900,
-                      backgroundImage: _profilePhotoUrl != null && _profilePhotoUrl!.isNotEmpty
-                          ? (_profilePhotoUrl!.startsWith('http') 
-                              ? NetworkImage(_profilePhotoUrl!)
-                              : FileImage(File(_profilePhotoUrl!)))
-                          : null,
-                      child: _profilePhotoUrl == null || _profilePhotoUrl!.isEmpty
-                          ? const Icon(
-                              Icons.camera_alt,
-                              size: 36,
-                              color: Colors.white,
-                            )
-                          : null,
+              // Profile Photo
+              Center(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _pickProfilePhoto,
+                      child: CircleAvatar(
+                        radius: 60,
+                        backgroundColor: Colors.blue.shade900,
+                        backgroundImage:
+                            _profilePhotoUrl != null &&
+                                _profilePhotoUrl!.isNotEmpty
+                            ? (_profilePhotoUrl!.startsWith('http')
+                                  ? NetworkImage(_profilePhotoUrl!)
+                                  : FileImage(File(_profilePhotoUrl!)))
+                            : null,
+                        child:
+                            _profilePhotoUrl == null ||
+                                _profilePhotoUrl!.isEmpty
+                            ? const Icon(
+                                Icons.camera_alt,
+                                size: 36,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
                     ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Tap to change profile photo',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Personal Information
+              const Text(
+                'Personal Information',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _fullNameCtrl,
+                decoration: const InputDecoration(labelText: 'Full Name *'),
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _surnameCtrl,
+                decoration: const InputDecoration(labelText: 'Surname'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _fatherNameCtrl,
+                decoration: const InputDecoration(labelText: 'Father Name'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _motherNameCtrl,
+                decoration: const InputDecoration(labelText: 'Mother Name'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _gotraCtrl,
+                decoration: const InputDecoration(labelText: 'Gotra'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _birthDateCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Birth Date (dd/MM/yyyy)',
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _bloodGroup.isEmpty ? null : _bloodGroup,
+                decoration: const InputDecoration(labelText: 'Blood Group'),
+                items: ['', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']
+                    .map(
+                      (bg) => DropdownMenuItem(
+                        value: bg,
+                        child: Text(bg.isEmpty ? 'Select' : bg),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _bloodGroup = v ?? ''),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _marriageStatus,
+                decoration: const InputDecoration(labelText: 'Marriage Status'),
+                items: ['unmarried', 'married']
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
+                onChanged: (v) =>
+                    setState(() => _marriageStatus = v ?? 'unmarried'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _nativeHomeCtrl,
+                decoration: const InputDecoration(labelText: 'Native Home'),
+              ),
+
+              // Contact Information
+              const SizedBox(height: 20),
+              const Text(
+                'Contact Information',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phoneCtrl,
+                decoration: const InputDecoration(labelText: 'Phone'),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _addressCtrl,
+                decoration: const InputDecoration(labelText: 'Address'),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _googleMapLinkCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Google Map Link',
+                  hintText: 'https://maps.google.com/...',
+                ),
+              ),
+
+              // Social Media
+              const SizedBox(height: 20),
+              const Text(
+                'Social Media',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // WhatsApp
+                  Column(
+                    children: [
+                      IconButton(
+                        onPressed: _whatsappCtrl.text.trim().isNotEmpty
+                            ? _launchWhatsApp
+                            : null,
+                        icon: const Icon(Icons.message, color: Colors.green),
+                        iconSize: 40,
+                      ),
+                      const Text('WhatsApp', style: TextStyle(fontSize: 12)),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Tap to change profile photo',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  // Instagram
+                  Column(
+                    children: [
+                      IconButton(
+                        onPressed: _instagramCtrl.text.trim().isNotEmpty
+                            ? _launchInstagram
+                            : null,
+                        icon: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.purple,
+                        ),
+                        iconSize: 40,
+                      ),
+                      const Text('Instagram', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                  // Facebook
+                  Column(
+                    children: [
+                      IconButton(
+                        onPressed: _facebookCtrl.text.trim().isNotEmpty
+                            ? _launchFacebook
+                            : null,
+                        icon: const Icon(Icons.facebook, color: Colors.blue),
+                        iconSize: 40,
+                      ),
+                      const Text('Facebook', style: TextStyle(fontSize: 12)),
+                    ],
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Personal Information
-            const Text(
-              'Personal Information',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _fullNameCtrl,
-              decoration: const InputDecoration(labelText: 'Full Name *'),
-              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _surnameCtrl,
-              decoration: const InputDecoration(labelText: 'Surname'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _fatherNameCtrl,
-              decoration: const InputDecoration(labelText: 'Father Name'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _motherNameCtrl,
-              decoration: const InputDecoration(labelText: 'Mother Name'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _gotraCtrl,
-              decoration: const InputDecoration(labelText: 'Gotra'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _birthDateCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Birth Date (dd/MM/yyyy)',
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _bloodGroup.isEmpty ? null : _bloodGroup,
-              decoration: const InputDecoration(labelText: 'Blood Group'),
-              items: ['', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']
-                  .map(
-                    (bg) => DropdownMenuItem(
-                      value: bg,
-                      child: Text(bg.isEmpty ? 'Select' : bg),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (v) => setState(() => _bloodGroup = v ?? ''),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _marriageStatus,
-              decoration: const InputDecoration(labelText: 'Marriage Status'),
-              items: ['unmarried', 'married']
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                  .toList(),
-              onChanged: (v) =>
-                  setState(() => _marriageStatus = v ?? 'unmarried'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _nativeHomeCtrl,
-              decoration: const InputDecoration(labelText: 'Native Home'),
-            ),
-
-            // Contact Information
-            const SizedBox(height: 20),
-            const Text(
-              'Contact Information',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _phoneCtrl,
-              decoration: const InputDecoration(labelText: 'Phone'),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _addressCtrl,
-              decoration: const InputDecoration(labelText: 'Address'),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _googleMapLinkCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Google Map Link',
-                hintText: 'https://maps.google.com/...',
-              ),
-            ),
-
-            // Social Media
-            const SizedBox(height: 20),
-            const Text(
-              'Social Media',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // WhatsApp
-                Column(
-                  children: [
-                    IconButton(
-                      onPressed: _whatsappCtrl.text.trim().isNotEmpty ? _launchWhatsApp : null,
-                      icon: const Icon(Icons.message, color: Colors.green),
-                      iconSize: 40,
-                    ),
-                    const Text('WhatsApp', style: TextStyle(fontSize: 12)),
-                  ],
+              // Hidden text fields for storing values
+              TextFormField(
+                controller: _whatsappCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'WhatsApp Number',
+                  border: InputBorder.none,
                 ),
-                // Instagram
-                Column(
-                  children: [
-                    IconButton(
-                      onPressed: _instagramCtrl.text.trim().isNotEmpty ? _launchInstagram : null,
-                      icon: const Icon(Icons.camera_alt, color: Colors.purple),
-                      iconSize: 40,
-                    ),
-                    const Text('Instagram', style: TextStyle(fontSize: 12)),
-                  ],
+                onChanged: (value) => setState(() {}),
+              ),
+              TextFormField(
+                controller: _instagramCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Instagram Username',
+                  border: InputBorder.none,
                 ),
-                // Facebook
-                Column(
-                  children: [
-                    IconButton(
-                      onPressed: _facebookCtrl.text.trim().isNotEmpty ? _launchFacebook : null,
-                      icon: const Icon(Icons.facebook, color: Colors.blue),
-                      iconSize: 40,
-                    ),
-                    const Text('Facebook', style: TextStyle(fontSize: 12)),
-                  ],
+                onChanged: (value) => setState(() {}),
+              ),
+              TextFormField(
+                controller: _facebookCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Facebook Username',
+                  border: InputBorder.none,
                 ),
-              ],
-            ),
-            // Hidden text fields for storing values
-            TextFormField(
-              controller: _whatsappCtrl,
-              decoration: const InputDecoration(
-                labelText: 'WhatsApp Number',
-                border: InputBorder.none,
+                onChanged: (value) => setState(() {}),
               ),
-              onChanged: (value) => setState(() {}),
-            ),
-            TextFormField(
-              controller: _instagramCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Instagram Username',
-                border: InputBorder.none,
-              ),
-              onChanged: (value) => setState(() {}),
-            ),
-            TextFormField(
-              controller: _facebookCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Facebook Username',
-                border: InputBorder.none,
-              ),
-              onChanged: (value) => setState(() {}),
-            ),
 
-            // Firms/Business Details
-            const SizedBox(height: 20),
-            const Text(
-              'Firms / Business Details',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            ..._firms.asMap().entries.map((entry) {
-              final index = entry.key;
-              final firm = entry.value;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            initialValue: firm['name'],
-                            decoration: const InputDecoration(
-                              labelText: 'Firm Name',
-                              border: InputBorder.none,
+              // Firms/Business Details
+              const SizedBox(height: 20),
+              const Text(
+                'Firms / Business Details',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              ..._firms.asMap().entries.map((entry) {
+                final index = entry.key;
+                final firm = entry.value;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              initialValue: firm['name'],
+                              decoration: const InputDecoration(
+                                labelText: 'Firm Name',
+                                border: InputBorder.none,
+                              ),
+                              onChanged: (value) {
+                                _firms[index]['name'] = value;
+                              },
                             ),
-                            onChanged: (value) {
-                              _firms[index]['name'] = value;
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                _firms.removeAt(index);
+                              });
                             },
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            setState(() {
-                              _firms.removeAt(index);
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    TextFormField(
-                      initialValue: firm['phone'],
-                      decoration: const InputDecoration(
-                        labelText: 'Phone',
-                        border: InputBorder.none,
+                        ],
                       ),
-                      onChanged: (value) {
-                        _firms[index]['phone'] = value;
-                      },
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            initialValue: firm['mapLink'],
-                            decoration: const InputDecoration(
-                              labelText: 'Map Link',
-                              border: InputBorder.none,
+                      TextFormField(
+                        initialValue: firm['phone'],
+                        decoration: const InputDecoration(
+                          labelText: 'Phone',
+                          border: InputBorder.none,
+                        ),
+                        onChanged: (value) {
+                          _firms[index]['phone'] = value;
+                        },
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              initialValue: firm['mapLink'],
+                              decoration: const InputDecoration(
+                                labelText: 'Map Link',
+                                border: InputBorder.none,
+                              ),
+                              onChanged: (value) {
+                                _firms[index]['mapLink'] = value;
+                              },
                             ),
-                            onChanged: (value) {
-                              _firms[index]['mapLink'] = value;
-                            },
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.map, color: Colors.blue),
-                          onPressed: firm['mapLink']?.isNotEmpty == true 
-                              ? () => _launchMap(firm['mapLink']!)
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-            TextButton.icon(
-              onPressed: () {
-                setState(() {
-                  _firms.add({'name': '', 'phone': '', 'mapLink': ''});
-                });
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Firm'),
-            ),
-
-            // Family Information
-            const SizedBox(height: 20),
-            const Text(
-              'Family Information',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _dktFamilyIdCtrl,
-              decoration: const InputDecoration(
-                labelText: 'DKT Family ID',
-                hintText: 'Enter DKT Family ID',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _parentMidCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Parent Member ID',
-                hintText: 'Enter parent MID (optional)',
-              ),
-            ),
-
-            // Tags
-            const SizedBox(height: 20),
-            const Text(
-              'Tags',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            // Visible tag input field
-            TextFormField(
-              controller: _tagsCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Add Tag (max 15 chars)',
-                hintText: 'Enter tag and press + button',
-              ),
-              maxLength: 15,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: const SizedBox.shrink(), // Empty space
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    final v = _tagsCtrl.text.trim();
-                    if (v.isNotEmpty && v.length <= 15 && !_tags.contains(v)) {
-                      setState(() {
-                        _tags.add(v);
-                        _tagsCtrl.clear();
-                      });
-                    }
-                  },
-                ),
-              ],
-            ),
-            if (_tags.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                children: _tags.map((tag) {
-                  return Chip(
-                    label: Text(tag),
-                    onDeleted: () => setState(() => _tags.remove(tag)),
-                  );
-                }).toList(),
-              ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                if (!_formKey.currentState!.validate()) return;
-
-                await MemberService().updateMember(
-                  familyDocId: widget.familyDocId,
-                  memberId: widget.memberId,
-                  updates: {
-                    'fullName': _fullNameCtrl.text.trim(),
-                    'surname': _surnameCtrl.text.trim(),
-                    'fatherName': _fatherNameCtrl.text.trim(),
-                    'motherName': _motherNameCtrl.text.trim(),
-                    'gotra': _gotraCtrl.text.trim(),
-                    'birthDate': _birthDateCtrl.text.trim(),
-                    'bloodGroup': _bloodGroup,
-                    'marriageStatus': _marriageStatus,
-                    'nativeHome': _nativeHomeCtrl.text.trim(),
-                    'phone': _phoneCtrl.text.trim(),
-                    'address': _addressCtrl.text.trim(),
-                    'googleMapLink': _googleMapLinkCtrl.text.trim(),
-                    'whatsapp': _whatsappCtrl.text.trim(),
-                    'instagram': _instagramCtrl.text.trim(),
-                    'facebook': _facebookCtrl.text.trim(),
-                    'firms': _firms,
-                    'tags': _tags,
-                    'parentMid': _parentMidCtrl.text.trim(),
-                    'familyId': _dktFamilyIdCtrl.text.trim(),
-                    'photoUrl': _profilePhotoUrl ?? '',
-                  },
+                          IconButton(
+                            icon: const Icon(Icons.map, color: Colors.blue),
+                            onPressed: firm['mapLink']?.isNotEmpty == true
+                                ? () => _launchMap(firm['mapLink']!)
+                                : null,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 );
+              }),
+              TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _firms.add({'name': '', 'phone': '', 'mapLink': ''});
+                  });
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Add Firm'),
+              ),
 
-                Navigator.pop(context);
-              },
-              child: const Text('Update Member'),
-            ),
-            const SizedBox(height: 24),
+              // Family Information
+              const SizedBox(height: 20),
+              const Text(
+                'Family Information',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _dktFamilyIdCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'DKT Family ID',
+                  hintText: 'Enter DKT Family ID',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _parentMidCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Parent Member ID',
+                  hintText: 'Enter parent MID (optional)',
+                ),
+              ),
+
+              // Tags
+              const SizedBox(height: 20),
+              const Text(
+                'Tags',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              // Visible tag input field
+              TextFormField(
+                controller: _tagsCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Add Tag (max 15 chars)',
+                  hintText: 'Enter tag and press + button',
+                ),
+                maxLength: 15,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: const SizedBox.shrink(), // Empty space
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () {
+                      final v = _tagsCtrl.text.trim();
+                      if (v.isNotEmpty &&
+                          v.length <= 15 &&
+                          !_tags.contains(v)) {
+                        setState(() {
+                          _tags.add(v);
+                          _tagsCtrl.clear();
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              if (_tags.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  children: _tags.map((tag) {
+                    return Chip(
+                      label: Text(tag),
+                      onDeleted: () => setState(() => _tags.remove(tag)),
+                    );
+                  }).toList(),
+                ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () async {
+                  if (!_formKey.currentState!.validate()) return;
+
+                  await MemberService().updateMember(
+                    mainFamilyDocId: widget.familyDocId,
+                    subFamilyDocId: widget.subFamilyDocId ?? '',
+                    memberId: widget.memberId,
+                    updates: {
+                      'fullName': _fullNameCtrl.text.trim(),
+                      'surname': _surnameCtrl.text.trim(),
+                      'fatherName': _fatherNameCtrl.text.trim(),
+                      'motherName': _motherNameCtrl.text.trim(),
+                      'gotra': _gotraCtrl.text.trim(),
+                      'birthDate': _birthDateCtrl.text.trim(),
+                      'bloodGroup': _bloodGroup,
+                      'marriageStatus': _marriageStatus,
+                      'nativeHome': _nativeHomeCtrl.text.trim(),
+                      'phone': _phoneCtrl.text.trim(),
+                      'address': _addressCtrl.text.trim(),
+                      'googleMapLink': _googleMapLinkCtrl.text.trim(),
+                      'whatsapp': _whatsappCtrl.text.trim(),
+                      'instagram': _instagramCtrl.text.trim(),
+                      'facebook': _facebookCtrl.text.trim(),
+                      'firms': _firms,
+                      'tags': _tags,
+                      'parentMid': _parentMidCtrl.text.trim(),
+                      'familyId': _dktFamilyIdCtrl.text.trim(),
+                      'photoUrl': _profilePhotoUrl ?? '',
+                    },
+                  );
+
+                  Navigator.pop(context);
+                },
+                child: const Text('Update Member'),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -1209,18 +1249,21 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 class MemberListScreen extends StatefulWidget {
   final String familyDocId;
   final String familyName;
+  final String? subFamilyDocId; // NEW: Optional sub-family ID
 
   const MemberListScreen({
     super.key,
     required this.familyDocId,
     required this.familyName,
+    this.subFamilyDocId,
   });
 
   @override
   State<MemberListScreen> createState() => _MemberListScreenState();
 }
 
-class _MemberListScreenState extends State<MemberListScreen> with WidgetsBindingObserver {
+class _MemberListScreenState extends State<MemberListScreen>
+    with WidgetsBindingObserver {
   late Stream<QuerySnapshot> _membersStream;
   String _searchQuery = '';
   String _selectedTag = '';
@@ -1229,12 +1272,26 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _membersStream = FirebaseFirestore.instance
-        .collection('families')
-        .doc(widget.familyDocId)
-        .collection('members')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
+
+    // Use sub-family stream if subFamilyDocId is provided, otherwise use old family stream
+    if (widget.subFamilyDocId != null) {
+      _membersStream = FirebaseFirestore.instance
+          .collection('families')
+          .doc(widget.familyDocId)
+          .collection('subfamilies')
+          .doc(widget.subFamilyDocId)
+          .collection('members')
+          .orderBy('createdAt', descending: true)
+          .snapshots();
+    } else {
+      // Fallback to old structure for backward compatibility
+      _membersStream = FirebaseFirestore.instance
+          .collection('families')
+          .doc(widget.familyDocId)
+          .collection('members')
+          .orderBy('createdAt', descending: true)
+          .snapshots();
+    }
   }
 
   @override
@@ -1248,28 +1305,42 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
     if (state == AppLifecycleState.resumed) {
       // Refresh the stream when app resumes
       setState(() {
-        _membersStream = FirebaseFirestore.instance
-            .collection('families')
-            .doc(widget.familyDocId)
-            .collection('members')
-            .orderBy('createdAt', descending: true)
-            .snapshots();
+        if (widget.subFamilyDocId != null) {
+          _membersStream = FirebaseFirestore.instance
+              .collection('families')
+              .doc(widget.familyDocId)
+              .collection('subfamilies')
+              .doc(widget.subFamilyDocId)
+              .collection('members')
+              .orderBy('createdAt', descending: true)
+              .snapshots();
+        } else {
+          _membersStream = FirebaseFirestore.instance
+              .collection('families')
+              .doc(widget.familyDocId)
+              .collection('members')
+              .orderBy('createdAt', descending: true)
+              .snapshots();
+        }
       });
     }
   }
 
   // Helper function to generate ImageKit signature
   String _generateImageKitSignature(String fileName, String privateKey) {
-    final algorithm = Hmac.sha256;
     final key = utf8.encode(privateKey);
-    final expiration = (DateTime.now().add(const Duration(hours: 24)).millisecondsSinceEpoch.toString());
-    
+    final expiration = (DateTime.now()
+        .add(const Duration(hours: 24))
+        .millisecondsSinceEpoch
+        .toString());
+
     final policy = 'image/${fileName.substring(0, fileName.lastIndexOf('.'))}';
     final signatureData = '$policy\n$expiration\n';
-    
-    final signature = base64.encode(hmac.convert(signatureData, key));
-    
-    return base64.encode(signature);
+
+    final hmacSha256 = Hmac(sha256, key);
+    final signature = hmacSha256.convert(utf8.encode(signatureData));
+
+    return base64.encode(signature.bytes);
   }
 
   // Helper function to build initials widget
@@ -1307,6 +1378,7 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
                   builder: (_) => AddMemberScreen(
                     familyDocId: widget.familyDocId,
                     familyName: widget.familyName,
+                    subFamilyDocId: widget.subFamilyDocId,
                   ),
                 ),
               );
@@ -1425,6 +1497,7 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
                               builder: (_) => MemberDetailScreen(
                                 memberId: doc.id,
                                 familyDocId: widget.familyDocId,
+                                subFamilyDocId: widget.subFamilyDocId,
                               ),
                             ),
                           );
@@ -1437,19 +1510,25 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 ListTile(
-                                  leading: const Icon(Icons.edit, color: Colors.blue),
+                                  leading: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blue,
+                                  ),
                                   title: const Text('Edit Member'),
                                   onTap: () => Navigator.pop(context, 'edit'),
                                 ),
                                 ListTile(
-                                  leading: const Icon(Icons.delete, color: Colors.red),
+                                  leading: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
                                   title: const Text('Delete Member'),
                                   onTap: () => Navigator.pop(context, 'delete'),
                                 ),
                               ],
                             ),
                           );
-                          
+
                           if (result == 'edit') {
                             Navigator.push(
                               context,
@@ -1457,6 +1536,7 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
                                 builder: (_) => EditMemberScreen(
                                   memberId: doc.id,
                                   familyDocId: widget.familyDocId,
+                                  subFamilyDocId: widget.subFamilyDocId,
                                 ),
                               ),
                             );
@@ -1470,7 +1550,8 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
                                     child: const Text('Cancel'),
                                   ),
                                   ElevatedButton(
@@ -1480,7 +1561,9 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
                                     onPressed: () async {
                                       Navigator.pop(context, true);
                                       await MemberService().deleteMember(
-                                        familyDocId: widget.familyDocId,
+                                        mainFamilyDocId: widget.familyDocId,
+                                        subFamilyDocId:
+                                            widget.subFamilyDocId ?? '',
                                         memberId: doc.id,
                                       );
                                     },
@@ -1491,7 +1574,8 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
                             );
                             if (confirm == true) {
                               await MemberService().deleteMember(
-                                familyDocId: widget.familyDocId,
+                                mainFamilyDocId: widget.familyDocId,
+                                subFamilyDocId: widget.subFamilyDocId ?? '',
                                 memberId: doc.id,
                               );
                             }
@@ -1512,20 +1596,29 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
                                 ),
                                 child: ClipOval(
                                   child: (() {
-                                    final photoUrl = data['photoUrl'] as String? ?? '';
+                                    final photoUrl =
+                                        data['photoUrl'] as String? ?? '';
                                     print('Member photo URL: "$photoUrl"');
-                                    print('Photo URL isNotEmpty: ${photoUrl.isNotEmpty}');
-                                    print('Photo URL starts with http: ${photoUrl.startsWith('http')}');
-                                    if (photoUrl.isNotEmpty && photoUrl.startsWith('http')) {
+                                    print(
+                                      'Photo URL isNotEmpty: ${photoUrl.isNotEmpty}',
+                                    );
+                                    print(
+                                      'Photo URL starts with http: ${photoUrl.startsWith('http')}',
+                                    );
+                                    if (photoUrl.isNotEmpty &&
+                                        photoUrl.startsWith('http')) {
                                       return Image.network(
                                         photoUrl,
                                         width: 60,
                                         height: 60,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          print('NetworkImage error: $error');
-                                          return _buildInitials(data);
-                                        },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              print(
+                                                'NetworkImage error: $error',
+                                              );
+                                              return _buildInitials(data);
+                                            },
                                       );
                                     } else {
                                       print('Using initials fallback');
@@ -1576,7 +1669,8 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
                                             ),
                                             decoration: BoxDecoration(
                                               color: Colors.blue.shade100,
-                                              borderRadius: BorderRadius.circular(12),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: Text(
                                               tag,
@@ -1623,6 +1717,7 @@ class _MemberListScreenState extends State<MemberListScreen> with WidgetsBinding
               builder: (_) => AddMemberScreen(
                 familyDocId: widget.familyDocId,
                 familyName: widget.familyName,
+                subFamilyDocId: widget.subFamilyDocId,
               ),
             ),
           );

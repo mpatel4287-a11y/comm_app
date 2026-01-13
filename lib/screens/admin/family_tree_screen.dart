@@ -1,17 +1,67 @@
 // lib/screens/admin/family_tree_screen.dart
 
+// ignore_for_file: unnecessary_underscores
+
 import 'package:flutter/material.dart';
 import '../../models/member_model.dart';
 import '../../services/member_service.dart';
 import '../user/member_detail_screen.dart';
 
+// Helper widget to handle profile images with error handling
+class _TreeProfileImage extends StatefulWidget {
+  final String? photoUrl;
+  final String fullName;
+  final double radius;
+
+  const _TreeProfileImage({
+    this.photoUrl,
+    required this.fullName,
+    this.radius = 20,
+  });
+
+  @override
+  State<_TreeProfileImage> createState() => __TreeProfileImageState();
+}
+
+class __TreeProfileImageState extends State<_TreeProfileImage> {
+  bool _hasError = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = widget.photoUrl ?? '';
+    final hasValidUrl = photoUrl.isNotEmpty && photoUrl.startsWith('http');
+
+    if (!hasValidUrl || _hasError) {
+      return CircleAvatar(
+        radius: widget.radius,
+        backgroundColor: Colors.blue.shade900,
+        child: Text(
+          widget.fullName.isNotEmpty ? widget.fullName[0].toUpperCase() : '?',
+          style: TextStyle(fontSize: widget.radius * 0.7, color: Colors.white),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: widget.radius,
+      backgroundColor: Colors.blue.shade900,
+      backgroundImage: NetworkImage(photoUrl),
+      onBackgroundImageError: (_, __) {
+        if (mounted) {
+          setState(() => _hasError = true);
+        }
+      },
+    );
+  }
+}
+
 class FamilyTreeScreen extends StatefulWidget {
-  final String familyDocId;
+  final String mainFamilyDocId;
   final String familyName;
 
   const FamilyTreeScreen({
     super.key,
-    required this.familyDocId,
+    required this.mainFamilyDocId,
     required this.familyName,
   });
 
@@ -31,7 +81,7 @@ class _FamilyTreeScreenState extends State<FamilyTreeScreen> {
   }
 
   Future<void> _loadMembers() async {
-    final stream = _memberService.streamFamilyMembers(widget.familyDocId);
+    final stream = _memberService.streamAllMembers();
     stream.listen((members) {
       setState(() {
         _members = members;
@@ -123,23 +173,10 @@ class _FamilyTreeScreenState extends State<FamilyTreeScreen> {
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(
+                      _TreeProfileImage(
+                        photoUrl: member.photoUrl,
+                        fullName: member.fullName,
                         radius: 20,
-                        backgroundColor: Colors.blue.shade900,
-                        backgroundImage: member.photoUrl.isNotEmpty
-                            ? NetworkImage(member.photoUrl)
-                            : null,
-                        child: member.photoUrl.isEmpty
-                            ? Text(
-                                member.fullName.isNotEmpty
-                                    ? member.fullName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              )
-                            : null,
                       ),
                       const SizedBox(width: 12),
                       Expanded(

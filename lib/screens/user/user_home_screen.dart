@@ -1,12 +1,60 @@
 // lib/screens/user/user_home_screen.dart
 
-// ignore_for_file: unused_field, unused_import
+// ignore_for_file: unused_field, unused_import, unnecessary_underscores
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/member_model.dart';
 import '../../services/member_service.dart';
 import 'member_detail_screen.dart';
+
+// Helper widget to handle profile images with error handling
+class _HomeProfileImage extends StatefulWidget {
+  final String? photoUrl;
+  final String fullName;
+  final double radius;
+
+  const _HomeProfileImage({
+    this.photoUrl,
+    required this.fullName,
+    this.radius = 25,
+  });
+
+  @override
+  State<_HomeProfileImage> createState() => __HomeProfileImageState();
+}
+
+class __HomeProfileImageState extends State<_HomeProfileImage> {
+  bool _hasError = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = widget.photoUrl ?? '';
+    final hasValidUrl = photoUrl.isNotEmpty && photoUrl.startsWith('http');
+
+    if (!hasValidUrl || _hasError) {
+      return CircleAvatar(
+        radius: widget.radius,
+        backgroundColor: Colors.blue.shade900,
+        child: Text(
+          widget.fullName.isNotEmpty ? widget.fullName[0].toUpperCase() : '?',
+          style: TextStyle(fontSize: widget.radius * 0.7, color: Colors.white),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: widget.radius,
+      backgroundColor: Colors.blue.shade900,
+      backgroundImage: NetworkImage(photoUrl),
+      onBackgroundImageError: (_, __) {
+        if (mounted) {
+          setState(() => _hasError = true);
+        }
+      },
+    );
+  }
+}
 
 class UserHomeScreen extends StatefulWidget {
   const UserHomeScreen({super.key});
@@ -91,19 +139,10 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                         vertical: 4,
                       ),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.blue.shade900,
-                          backgroundImage: member.photoUrl.isNotEmpty
-                              ? NetworkImage(member.photoUrl)
-                              : null,
-                          child: member.photoUrl.isEmpty
-                              ? Text(
-                                  member.fullName.isNotEmpty
-                                      ? member.fullName[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(color: Colors.white),
-                                )
-                              : null,
+                        leading: _HomeProfileImage(
+                          photoUrl: member.photoUrl,
+                          fullName: member.fullName,
+                          radius: 25,
                         ),
                         title: Text(member.fullName),
                         subtitle: Text('${member.familyName} • ${member.mid}'),

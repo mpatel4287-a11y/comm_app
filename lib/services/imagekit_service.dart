@@ -11,6 +11,7 @@
 
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'imagekit_config.dart';
 
@@ -84,10 +85,19 @@ class ImageKitService {
   }
 
   /// Generate authentication token for ImageKit upload
+  ///
+  /// ImageKit requires HMAC-SHA256 signature generation
+  /// The signature is computed as: HMAC-SHA256(privateKey, token)
+  /// where token is the timestamp
   String _generateAuthToken(String token) {
-    // For client-side uploads, we use a simpler token generation
-    // In production, this should be done on your server for security
-    return base64Encode(utf8.encode('${ImageKitConfig.privateKey}:$token'));
+    final privateKey = ImageKitConfig.privateKey;
+    final key = utf8.encode(privateKey);
+    final data = utf8.encode(token);
+
+    final hmacSha256 = Hmac(sha256, key);
+    final signature = hmacSha256.convert(data);
+
+    return base64Encode(signature.bytes);
   }
 
   /// Delete file from ImageKit
@@ -121,8 +131,11 @@ class ImageKitService {
     }
 
     try {
+      // Clean the URL - remove any leading/trailing whitespace
+      final cleanUrl = url.trim();
+
       // Check if URL already has query parameters
-      final uri = Uri.parse(url);
+      final uri = Uri.parse(cleanUrl);
       final hasQueryParams = uri.queryParameters.isNotEmpty;
 
       // Build transformation string
@@ -135,12 +148,35 @@ class ImageKitService {
         return uri.replace(queryParameters: newParams).toString();
       } else {
         // Add transformation as query parameter
-        return '$url?tr=$transformation';
+        return '$cleanUrl?tr=$transformation';
       }
     } catch (e) {
       print('Error generating optimized URL: $e');
       return url;
     }
+  }
+
+  /// Ensure URL has proper ImageKit format with transformations
+  String formatImageKitUrl(String url, {int width = 200, int height = 200}) {
+    if (url.isEmpty) return url;
+
+    // Clean the URL
+    final cleanUrl = url.trim();
+
+    // Check if it's already an ImageKit URL with transformation
+    if (cleanUrl.contains('ik.imagekit.io') && cleanUrl.contains('tr=')) {
+      return cleanUrl;
+    }
+
+    // Check if it's an ImageKit URL without transformation
+    if (cleanUrl.contains('ik.imagekit.io')) {
+      // Remove any existing query parameters
+      final baseUrl = cleanUrl.split('?')[0];
+      return '$baseUrl?tr=w-$width,h-$height,c-at_max,q-80';
+    }
+
+    // For non-ImageKit URLs, return as-is
+    return cleanUrl;
   }
 
   /// Get thumbnail URL

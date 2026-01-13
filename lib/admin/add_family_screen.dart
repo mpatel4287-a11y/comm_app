@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/family_service.dart';
+import '../services/counter_service.dart';
 
 class AddFamilyScreen extends StatefulWidget {
   const AddFamilyScreen({super.key});
@@ -12,13 +13,28 @@ class AddFamilyScreen extends StatefulWidget {
 
 class _AddFamilyScreenState extends State<AddFamilyScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _familyIdCtrl = TextEditingController();
   final _familyNameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
   final FamilyService _familyService = FamilyService();
   bool _loading = false;
   String? _error;
+  String _generatedFamilyId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _generateFamilyId();
+  }
+
+  Future<void> _generateFamilyId() async {
+    // Generate familyId for display (actual ID will be generated on save)
+    final CounterService counterService = CounterService();
+    final familyId = await counterService.getNextFamilyId();
+    setState(() {
+      _generatedFamilyId = familyId;
+    });
+  }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -30,7 +46,6 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
 
     try {
       await _familyService.addFamily(
-        familyId: int.parse(_familyIdCtrl.text.trim()),
         familyName: _familyNameCtrl.text.trim(),
         password: _passwordCtrl.text.trim(),
       );
@@ -53,20 +68,48 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
           key: _formKey,
           child: Column(
             children: [
+              // Auto-generated Family ID Display
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: Colors.blue.shade700),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Family ID (Auto-generated)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                          Text(
+                            'F$_generatedFamilyId',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _familyNameCtrl,
                 decoration: const InputDecoration(labelText: 'Family Name'),
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _familyIdCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Family ID (6 digit)',
-                ),
-                validator: (v) =>
-                    v != null && v.length == 6 ? null : 'Must be 6 digits',
               ),
               const SizedBox(height: 12),
               TextFormField(

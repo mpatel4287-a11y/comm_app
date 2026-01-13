@@ -1,9 +1,59 @@
 // lib/screens/user/user_explore_screen.dart
 
+// ignore_for_file: unnecessary_underscores
+
 import 'package:flutter/material.dart';
 import '../../models/member_model.dart';
 import '../../services/member_service.dart';
 import 'member_detail_screen.dart';
+
+// Helper widget to handle profile images with error handling
+class _ProfileImage extends StatefulWidget {
+  final String? photoUrl;
+  final String fullName;
+  final double radius;
+
+  const _ProfileImage({
+    this.photoUrl,
+    required this.fullName,
+    this.radius = 25,
+  });
+
+  @override
+  State<_ProfileImage> createState() => __ProfileImageState();
+}
+
+class __ProfileImageState extends State<_ProfileImage> {
+  bool _hasError = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = widget.photoUrl ?? '';
+    final hasValidUrl = photoUrl.isNotEmpty && photoUrl.startsWith('http');
+
+    if (!hasValidUrl || _hasError) {
+      return CircleAvatar(
+        radius: widget.radius,
+        backgroundColor: Colors.blue.shade900,
+        child: Text(
+          widget.fullName.isNotEmpty ? widget.fullName[0].toUpperCase() : '?',
+          style: TextStyle(fontSize: widget.radius * 0.7, color: Colors.white),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: widget.radius,
+      backgroundColor: Colors.blue.shade900,
+      backgroundImage: NetworkImage(photoUrl),
+      onBackgroundImageError: (_, __) {
+        if (mounted) {
+          setState(() => _hasError = true);
+        }
+      },
+    );
+  }
+}
 
 class UserExploreScreen extends StatefulWidget {
   const UserExploreScreen({super.key});
@@ -651,23 +701,10 @@ class _UserExploreScreenState extends State<UserExploreScreen> {
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     child: ListTile(
-                      leading: CircleAvatar(
+                      leading: _ProfileImage(
+                        photoUrl: member.photoUrl,
+                        fullName: member.fullName,
                         radius: 25,
-                        backgroundColor: Colors.blue.shade900,
-                        backgroundImage: member.photoUrl.isNotEmpty
-                            ? NetworkImage(member.photoUrl)
-                            : null,
-                        child: member.photoUrl.isEmpty
-                            ? Text(
-                                member.fullName.isNotEmpty
-                                    ? member.fullName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                ),
-                              )
-                            : null,
                       ),
                       title: Text(
                         member.fullName,

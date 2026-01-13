@@ -1,6 +1,6 @@
 // lib/screens/user/user_profile_screen.dart
 
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, avoid_print, unnecessary_underscores
 
 import 'package:flutter/material.dart';
 import '../../services/theme_service.dart';
@@ -11,6 +11,56 @@ import '../../services/photo_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/member_model.dart';
 import '../../auth/login_screen.dart';
+
+// Helper widget to handle profile images with error handling
+class ProfileImage extends StatefulWidget {
+  final String? photoUrl;
+  final String fullName;
+  final double radius;
+
+  const ProfileImage({
+    super.key,
+    this.photoUrl,
+    required this.fullName,
+    this.radius = 60,
+  });
+
+  @override
+  State<ProfileImage> createState() => _ProfileImageState();
+}
+
+class _ProfileImageState extends State<ProfileImage> {
+  bool _hasError = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = widget.photoUrl ?? '';
+    final hasValidUrl = photoUrl.isNotEmpty && photoUrl.startsWith('http');
+
+    if (!hasValidUrl || _hasError) {
+      // Show initials when no valid URL or error occurred
+      return CircleAvatar(
+        radius: widget.radius,
+        backgroundColor: Colors.blue.shade900,
+        child: Text(
+          widget.fullName.isNotEmpty ? widget.fullName[0].toUpperCase() : '?',
+          style: TextStyle(fontSize: widget.radius * 0.6, color: Colors.white),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: widget.radius,
+      backgroundColor: Colors.blue.shade900,
+      backgroundImage: NetworkImage(photoUrl),
+      onBackgroundImageError: (_, __) {
+        if (mounted) {
+          setState(() => _hasError = true);
+        }
+      },
+    );
+  }
+}
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -38,13 +88,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final memberId = await SessionManager.getMemberId();
-    final familyDocId = await SessionManager.getFamilyDocId();
-    if (memberId != null && familyDocId != null) {
+    final memberDocId = await SessionManager.getMemberDocId();
+    final mainFamilyDocId = await SessionManager.getFamilyDocId();
+    final subFamilyDocId = await SessionManager.getSubFamilyDocId();
+
+    if (memberDocId != null && mainFamilyDocId != null) {
       final member = await _memberService.getMember(
-        familyDocId: familyDocId,
-        memberId: memberId,
+        mainFamilyDocId: mainFamilyDocId,
+        subFamilyDocId: subFamilyDocId ?? '',
+        memberId: memberDocId,
       );
+
+      // Debug: Log photo URL
+      if (member != null) {
+        print('UserProfileScreen - Member: ${member.fullName}');
+        print('UserProfileScreen - Photo URL: ${member.photoUrl}');
+        print(
+          'UserProfileScreen - Photo URL isEmpty: ${member.photoUrl.isEmpty}',
+        );
+        print(
+          'UserProfileScreen - Photo URL startsWith http: ${member.photoUrl.startsWith('http')}',
+        );
+      }
+
       setState(() {
         _currentUser = member;
         _loading = false;
@@ -75,23 +141,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   Center(
                     child: Stack(
                       children: [
-                        CircleAvatar(
+                        ProfileImage(
+                          photoUrl: _currentUser?.photoUrl,
+                          fullName: _currentUser?.fullName ?? 'Guest',
                           radius: 60,
-                          backgroundColor: Colors.blue.shade900,
-                          backgroundImage:
-                              _currentUser?.photoUrl.isNotEmpty == true
-                              ? NetworkImage(_currentUser!.photoUrl)
-                              : null,
-                          child: _currentUser?.photoUrl.isEmpty == true
-                              ? Text(
-                                  _currentUser?.fullName[0].toUpperCase() ??
-                                      '?',
-                                  style: const TextStyle(
-                                    fontSize: 40,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : null,
                         ),
                         if (_uploadingPhoto)
                           const Positioned(
@@ -388,14 +441,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
         if (photoUrl != null) {
           await _memberService.updateMember(
-            familyDocId: _currentUser!.familyDocId,
+            mainFamilyDocId: _currentUser!.familyDocId,
+            subFamilyDocId: _currentUser!.subFamilyDocId,
             memberId: _currentUser!.id,
             updates: {'photoUrl': photoUrl},
           );
 
           // Refresh user data
           final updatedMember = await _memberService.getMember(
-            familyDocId: _currentUser!.familyDocId,
+            mainFamilyDocId: _currentUser!.familyDocId,
+            subFamilyDocId: _currentUser!.subFamilyDocId,
             memberId: _currentUser!.id,
           );
           setState(() {
@@ -439,14 +494,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
         if (photoUrl != null) {
           await _memberService.updateMember(
-            familyDocId: _currentUser!.familyDocId,
+            mainFamilyDocId: _currentUser!.familyDocId,
+            subFamilyDocId: _currentUser!.subFamilyDocId,
             memberId: _currentUser!.id,
             updates: {'photoUrl': photoUrl},
           );
 
           // Refresh user data
           final updatedMember = await _memberService.getMember(
-            familyDocId: _currentUser!.familyDocId,
+            mainFamilyDocId: _currentUser!.familyDocId,
+            subFamilyDocId: _currentUser!.subFamilyDocId,
             memberId: _currentUser!.id,
           );
           setState(() {
@@ -486,14 +543,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
       // Update member to remove photo URL
       await _memberService.updateMember(
-        familyDocId: _currentUser!.familyDocId,
+        mainFamilyDocId: _currentUser!.familyDocId,
+        subFamilyDocId: _currentUser!.subFamilyDocId,
         memberId: _currentUser!.id,
         updates: {'photoUrl': ''},
       );
 
       // Refresh user data
       final updatedMember = await _memberService.getMember(
-        familyDocId: _currentUser!.familyDocId,
+        mainFamilyDocId: _currentUser!.familyDocId,
+        subFamilyDocId: _currentUser!.subFamilyDocId,
         memberId: _currentUser!.id,
       );
       setState(() {

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/family_service.dart';
 import 'add_family_screen.dart';
-import 'member_list_screen.dart';
+import 'subfamily_list_screen.dart';
 
 // Placeholder for EditFamilyScreen
 class EditFamilyScreen extends StatefulWidget {
@@ -244,9 +244,10 @@ class FamilyListScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MemberListScreen(
-                          familyDocId: doc.id,
-                          familyName: data['familyName'],
+                        builder: (_) => SubFamilyListScreen(
+                          mainFamilyDocId: doc.id,
+                          mainFamilyId: data['familyId'].toString(),
+                          mainFamilyName: data['familyName'],
                         ),
                       ),
                     );

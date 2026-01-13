@@ -1,6 +1,6 @@
 // lib/screens/user/member_detail_screen.dart
 
-// ignore_for_file: unused_field
+// ignore_for_file: unused_field, unused_element, unnecessary_underscores
 
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
@@ -10,11 +10,67 @@ import '../../../services/member_service.dart';
 import '../../../services/session_manager.dart';
 import 'qr_share_screen.dart';
 
+// Helper widget to handle profile images with error handling
+class ProfileImage extends StatefulWidget {
+  final String? photoUrl;
+  final String fullName;
+  final double radius;
+
+  const ProfileImage({
+    super.key,
+    this.photoUrl,
+    required this.fullName,
+    this.radius = 60,
+  });
+
+  @override
+  State<ProfileImage> createState() => _ProfileImageState();
+}
+
+class _ProfileImageState extends State<ProfileImage> {
+  bool _hasError = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = widget.photoUrl ?? '';
+    final hasValidUrl = photoUrl.isNotEmpty && photoUrl.startsWith('http');
+
+    if (!hasValidUrl || _hasError) {
+      // Show initials when no valid URL or error occurred
+      return CircleAvatar(
+        radius: widget.radius,
+        backgroundColor: Colors.blue.shade900,
+        child: Text(
+          widget.fullName.isNotEmpty ? widget.fullName[0].toUpperCase() : '?',
+          style: TextStyle(fontSize: widget.radius * 0.6, color: Colors.white),
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: widget.radius,
+      backgroundColor: Colors.blue.shade900,
+      backgroundImage: NetworkImage(photoUrl),
+      onBackgroundImageError: (_, __) {
+        if (mounted) {
+          setState(() => _hasError = true);
+        }
+      },
+    );
+  }
+}
+
 class MemberDetailScreen extends StatefulWidget {
   final String memberId;
   final String? familyDocId;
+  final String? subFamilyDocId; // NEW: Optional sub-family ID
 
-  const MemberDetailScreen({super.key, required this.memberId, this.familyDocId});
+  const MemberDetailScreen({
+    super.key,
+    required this.memberId,
+    this.familyDocId,
+    this.subFamilyDocId,
+  });
 
   @override
   State<MemberDetailScreen> createState() => _MemberDetailScreenState();
@@ -33,13 +89,15 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   }
 
   Future<void> _loadMember() async {
-    final docId = widget.familyDocId ?? await SessionManager.getFamilyDocId() ?? '';
+    final docId =
+        widget.familyDocId ?? await SessionManager.getFamilyDocId() ?? '';
     if (docId.isEmpty) {
       setState(() => _loading = false);
       return;
     }
     final member = await _memberService.getMember(
-      familyDocId: docId,
+      mainFamilyDocId: docId,
+      subFamilyDocId: widget.subFamilyDocId ?? '',
       memberId: widget.memberId,
     );
     setState(() {
@@ -222,23 +280,10 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
             Center(
               child: Column(
                 children: [
-                  CircleAvatar(
+                  ProfileImage(
+                    photoUrl: member.photoUrl,
+                    fullName: member.fullName,
                     radius: 60,
-                    backgroundColor: Colors.blue.shade900,
-                    backgroundImage: member.photoUrl.isNotEmpty && member.photoUrl.startsWith('http')
-                        ? NetworkImage(member.photoUrl)
-                        : null,
-                    child: member.photoUrl.isEmpty || !member.photoUrl.startsWith('http')
-                        ? Text(
-                            member.fullName.isNotEmpty
-                                ? member.fullName[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                              fontSize: 36,
-                              color: Colors.white,
-                            ),
-                          )
-                        : null,
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -251,10 +296,6 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                   Text(
                     'Member ID: ${member.mid}',
                     style: const TextStyle(fontSize: 16, color: Colors.black54),
-                  ),
-                  Text(
-                    'Photo URL: ${member.photoUrl}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 8),
                   if (member.tags.isNotEmpty)
@@ -362,7 +403,11 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                             },
                             child: Row(
                               children: [
-                                const Icon(Icons.map, color: Colors.blue, size: 16),
+                                const Icon(
+                                  Icons.map,
+                                  color: Colors.blue,
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   'View on Map',
@@ -385,7 +430,6 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
             const SizedBox(height: 16),
 
             // Social Media
-
             const SizedBox(height: 24),
           ],
         ),
