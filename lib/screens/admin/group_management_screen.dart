@@ -117,6 +117,7 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                             gotra: '',
                             birthDate: '',
                             age: 0,
+                            education: '', // Added
                             bloodGroup: '',
                             marriageStatus: 'unmarried',
                             nativeHome: '',
@@ -128,6 +129,7 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                             instagram: '',
                             facebook: '',
                             photoUrl: '',
+                            password: 'password', // Added to fix constructor
                             role: 'member',
                             tags: [],
                             isActive: true,

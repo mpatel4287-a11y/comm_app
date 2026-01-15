@@ -2,6 +2,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/member_model.dart';
+import 'subfamily_service.dart'; // Added import
 
 class MemberService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -32,6 +33,7 @@ class MemberService {
     required String motherName,
     required String gotra,
     required String birthDate,
+    required String education, // Added
     required String bloodGroup,
     required String marriageStatus,
     required String nativeHome,
@@ -44,6 +46,7 @@ class MemberService {
     required String facebook,
     required List<String> tags,
     required String parentMid,
+    required String password, // Added
     String photoUrl = '',
   }) async {
     final age = MemberModel.calculateAge(birthDate);
@@ -90,6 +93,7 @@ class MemberService {
       gotra: gotra.trim(),
       birthDate: birthDate.trim(),
       age: age,
+      education: education.trim(), // Added
       bloodGroup: bloodGroup.trim(),
       marriageStatus: marriageStatus,
       nativeHome: nativeHome.trim(),
@@ -101,6 +105,7 @@ class MemberService {
       instagram: instagram.trim(),
       facebook: facebook.trim(),
       photoUrl: photoUrl.trim(),
+      password: password, // Added
       role: 'member',
       tags: cleanedTags,
       isActive: true,
@@ -108,7 +113,15 @@ class MemberService {
       createdAt: DateTime.now(),
     );
 
+    // Batch write to ensure consistency (optional but recommended)
+    // For now, sequential await to keep it simple and reuse existing services
     await memberRef.set(member.toMap());
+
+    // Update member count in sub-family
+    await SubFamilyService().incrementMemberCount(
+      mainFamilyDocId: mainFamilyDocId,
+      subFamilyDocId: subFamilyDocId,
+    );
   }
 
   // ---------------- UPDATE MEMBER ----------------
@@ -127,9 +140,12 @@ class MemberService {
           .toList();
     }
 
-    // Handle age recalculation
     if (updates.containsKey('birthDate')) {
       updates['age'] = MemberModel.calculateAge(updates['birthDate'] as String);
+    }
+
+    if (updates.containsKey('password')) {
+      updates['password'] = updates['password'].toString().trim();
     }
 
     await _getMembersCollection(
@@ -148,6 +164,12 @@ class MemberService {
       mainFamilyDocId,
       subFamilyDocId,
     ).doc(memberId).delete();
+
+    // Update member count in sub-family
+    await SubFamilyService().decrementMemberCount(
+      mainFamilyDocId: mainFamilyDocId,
+      subFamilyDocId: subFamilyDocId,
+    );
   }
 
   // ---------------- GET MEMBER ----------------
@@ -308,6 +330,18 @@ class MemberService {
         return MemberModel.fromMap(doc.id, doc.data());
       }
     }
-    return null;
+    return null; // Added missing return null
+  } // Added missing closing brace
+
+  // ---------------- GET UNIQUE MEMBER COUNT FOR SUB-FAMILY ----------------
+  Future<int> getSubFamilyMemberCount(
+    String mainFamilyDocId,
+    String subFamilyDocId,
+  ) async {
+    final snapshot = await _getMembersCollection(
+      mainFamilyDocId,
+      subFamilyDocId,
+    ).count().get();
+    return snapshot.count ?? 0;
   }
 }

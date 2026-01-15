@@ -16,6 +16,10 @@ class MemberModel {
   final String fatherName;
   final String motherName;
   final String gotra;
+  
+  // Education
+  final String education;
+
   final String birthDate; // dd/MM/yyyy
   final int age; // auto calculated
   final String bloodGroup;
@@ -37,6 +41,7 @@ class MemberModel {
 
   // Media
   final String photoUrl;
+  final String password; // Added for member login
 
   // Meta
   final String role; // member | manager
@@ -61,6 +66,7 @@ class MemberModel {
     required this.gotra,
     required this.birthDate,
     required this.age,
+    required this.education, // Added
     required this.bloodGroup,
     required this.marriageStatus,
     required this.nativeHome,
@@ -72,6 +78,7 @@ class MemberModel {
     required this.instagram,
     required this.facebook,
     required this.photoUrl,
+    required this.password, // Added
     required this.role,
     required this.tags,
     required this.isActive,
@@ -80,41 +87,58 @@ class MemberModel {
     required this.createdAt,
   });
 
-  // ---------------- AGE CALCULATION ----------------
-  static int calculateAge(String birthDate) {
-    final parts = birthDate.split('/');
-    if (parts.length != 3) return 0;
-
-    final day = int.tryParse(parts[0]) ?? 1;
-    final month = int.tryParse(parts[1]) ?? 1;
-    final year = int.tryParse(parts[2]) ?? 2000;
-
-    final dob = DateTime(year, month, day);
-    final today = DateTime.now();
-
-    int age = today.year - dob.year;
-    if (today.month < dob.month ||
-        (today.month == dob.month && today.day < dob.day)) {
-      age--;
+  static int calculateAge(String birthDateStr) {
+    if (birthDateStr.isEmpty) return 0;
+    try {
+      final parts = birthDateStr.split('/');
+      if (parts.length != 3) return 0;
+      final birthDate = DateTime(
+        int.parse(parts[2]),
+        int.parse(parts[1]),
+        int.parse(parts[0]),
+      );
+      final today = DateTime.now();
+      int age = today.year - birthDate.year;
+      if (today.month < birthDate.month ||
+          (today.month == birthDate.month && today.day < birthDate.day)) {
+        age--;
+      }
+      return age;
+    } catch (e) {
+      return 0;
     }
-    return age;
   }
 
-  // ---------------- GENERATE MID (Pattern: F{XX}-S{XX}-{XXX}) ----------------
-  // Example: F13-S01-123 where:
-  // - F13 = "F" + first 2 digits of family ID (e.g., family ID "132345" → "13")
-  // - S01 = "S" + 2-digit subfamily number (padded with leading zero if needed)
-  // - 123 = auto-generated 3-digit random member number
   static String generateMid(String familyId, String subFamilyId) {
-    // Generate a random 3-digit integer between 100 and 999
-    final random = DateTime.now().millisecondsSinceEpoch % 900 + 100;
-    // Ensure familyId is 2 digits (use first 2 digits, or pad with leading zero)
-    final shortFamilyId = familyId.length >= 2
-        ? familyId.substring(0, 2)
-        : familyId.padLeft(2, '0');
-    // Ensure subFamilyId is 2 digits (pad with leading zero if needed)
-    final formattedSubFamilyId = subFamilyId.padLeft(2, '0');
-    return 'F$shortFamilyId-S$formattedSubFamilyId-$random';
+    // New Format: F-{FamilyHash}-S{SubFamilyId}-{Random}
+    // Example: F-Q6R-S02-867
+    
+    // Deterministic 3-char family hash
+    final familyHash = _generateFamilyHash(familyId);
+    
+    // Sub-family ID (ensure it's padded if needed, but usually is "01", etc.)
+    final subPart = subFamilyId.padLeft(2, '0');
+    
+    // Random 3-digit part
+    final random = (100 + (DateTime.now().millisecond % 900)).toString();
+    
+    return 'F-$familyHash-S$subPart-$random';
+  }
+
+  static String _generateFamilyHash(String familyId) {
+    // Deterministic 3-char alphanumeric hash for the 2-digit familyId
+    // Seeded with a salt to avoid direct predictability
+    final input = 'FAM_PREFIX_$familyId';
+    int hash = 0;
+    for (int i = 0; i < input.length; i++) {
+        hash = (hash * 31 + input.codeUnitAt(i)) & 0xFFFFFFFF;
+    }
+    // Convert to base 36 (alphanumeric) and take 3 chars
+    String code = hash.toRadixString(36).toUpperCase();
+    if (code.length < 3) {
+      code = code.padLeft(3, '0');
+    }
+    return code.substring(code.length - 3);
   }
 
   // ---------------- TO MAP ----------------
@@ -133,6 +157,7 @@ class MemberModel {
       'gotra': gotra,
       'birthDate': birthDate,
       'age': age,
+      'education': education, // Added
       'bloodGroup': bloodGroup,
       'marriageStatus': marriageStatus,
       'nativeHome': nativeHome,
@@ -143,6 +168,7 @@ class MemberModel {
       'instagram': instagram,
       'facebook': facebook,
       'photoUrl': photoUrl,
+      'password': password, // Added
       'role': role,
       'tags': tags,
       'isActive': isActive,
@@ -173,6 +199,7 @@ class MemberModel {
       gotra: data['gotra'] ?? '',
       birthDate: data['birthDate'] ?? '',
       age: data['age'] ?? 0,
+      education: data['education'] ?? '', // Added
       bloodGroup: data['bloodGroup'] ?? '',
       marriageStatus: data['marriageStatus'] ?? 'unmarried',
       nativeHome: data['nativeHome'] ?? '',
@@ -186,6 +213,7 @@ class MemberModel {
       instagram: data['instagram'] ?? '',
       facebook: data['facebook'] ?? '',
       photoUrl: data['photoUrl'] ?? '',
+      password: data['password'] ?? '123456', // Added default for existing
       role: data['role'] ?? 'member',
       tags: List<String>.from(data['tags'] ?? []),
       isActive: data['isActive'] ?? true,
@@ -210,6 +238,7 @@ class MemberModel {
     String? motherName,
     String? gotra,
     String? birthDate,
+    String? education,
     String? bloodGroup,
     String? marriageStatus,
     String? nativeHome,
@@ -221,6 +250,7 @@ class MemberModel {
     String? instagram,
     String? facebook,
     String? photoUrl,
+    String? password, // Added
     String? role,
     List<String>? tags,
     bool? isActive,
@@ -241,7 +271,8 @@ class MemberModel {
       motherName: motherName ?? this.motherName,
       gotra: gotra ?? this.gotra,
       birthDate: birthDate ?? this.birthDate,
-      age: birthDate != null ? calculateAge(birthDate) : age,
+      age: birthDate != null ? MemberModel.calculateAge(birthDate) : age,
+      education: education ?? this.education, // Added
       bloodGroup: bloodGroup ?? this.bloodGroup,
       marriageStatus: marriageStatus ?? this.marriageStatus,
       nativeHome: nativeHome ?? this.nativeHome,
@@ -253,6 +284,7 @@ class MemberModel {
       instagram: instagram ?? this.instagram,
       facebook: facebook ?? this.facebook,
       photoUrl: photoUrl ?? this.photoUrl,
+      password: password ?? this.password, // Added
       role: role ?? this.role,
       tags: tags ?? this.tags,
       isActive: isActive ?? this.isActive,

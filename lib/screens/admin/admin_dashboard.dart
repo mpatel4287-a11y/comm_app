@@ -1,10 +1,29 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/session_manager.dart';
 
-class AdminDashboard extends StatelessWidget {
+class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
+
+  @override
+  State<AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<AdminDashboard> {
+  String? _role;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await SessionManager.getRole();
+    setState(() => _role = role);
+  }
 
   Future<void> _logout(BuildContext context) async {
     final ok = await showDialog<bool>(
@@ -33,9 +52,11 @@ class AdminDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isManager = _role == 'manager';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: Text(isManager ? 'Manager Portal' : 'Admin Dashboard'),
         backgroundColor: Colors.blue.shade900,
         actions: [
           IconButton(
@@ -51,15 +72,16 @@ class AdminDashboard extends StatelessWidget {
           children: [
             _buildSectionTitle('Family & Members'),
             const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.people,
-              title: 'Families',
-              subtitle: 'Manage family records',
-              color: Colors.blue,
-              onTap: () => Navigator.pushNamed(context, '/admin/families'),
-            ),
-            const SizedBox(height: 12),
+            if (!isManager)
+              _buildDashboardCard(
+                context,
+                icon: Icons.family_restroom,
+                title: 'Families',
+                subtitle: 'Manage family records',
+                color: Colors.blue,
+                onTap: () => Navigator.pushNamed(context, '/admin/families'),
+              ),
+            if (!isManager) const SizedBox(height: 12),
             _buildDashboardCard(
               context,
               icon: Icons.people,
@@ -88,26 +110,29 @@ class AdminDashboard extends StatelessWidget {
               color: Colors.orange,
               onTap: () => Navigator.pushNamed(context, '/admin/events'),
             ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Insights'),
-            const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.analytics,
-              title: 'Analytics',
-              subtitle: 'View statistics and reports',
-              color: Colors.teal,
-              onTap: () => Navigator.pushNamed(context, '/admin/analytics'),
-            ),
-            const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.health_and_safety,
-              title: 'System Health',
-              subtitle: 'Monitor system status',
-              color: Colors.red,
-              onTap: () => Navigator.pushNamed(context, '/admin/system-health'),
-            ),
+            
+            if (!isManager) ...[
+              const SizedBox(height: 24),
+              _buildSectionTitle('Insights'),
+              const SizedBox(height: 12),
+              _buildDashboardCard(
+                context,
+                icon: Icons.analytics,
+                title: 'Analytics',
+                subtitle: 'View statistics and reports',
+                color: Colors.teal,
+                onTap: () => Navigator.pushNamed(context, '/admin/analytics'),
+              ),
+              const SizedBox(height: 12),
+              _buildDashboardCard(
+                context,
+                icon: Icons.health_and_safety,
+                title: 'System Health',
+                subtitle: 'Monitor system status',
+                color: Colors.red,
+                onTap: () => Navigator.pushNamed(context, '/admin/system-health'),
+              ),
+            ],
           ],
         ),
       ),

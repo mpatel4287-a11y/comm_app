@@ -110,7 +110,8 @@ class FamilyService {
   Future<void> toggleBlockFamily(String familyDocId) async {
     final doc = await _firestore.collection('families').doc(familyDocId).get();
     if (doc.exists) {
-      final isBlocked = doc['isBlocked'] as bool? ?? false;
+      final data = doc.data() as Map<String, dynamic>;
+      final isBlocked = data['isBlocked'] as bool? ?? false;
       await doc.reference.update({'isBlocked': !isBlocked});
     }
   }

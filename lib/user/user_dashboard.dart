@@ -31,7 +31,7 @@ class _UserDashboardState extends State<UserDashboard> {
 
     // Get member count
     final snapshot = await FirebaseFirestore.instance
-        .collection('members')
+        .collectionGroup('members')
         .where('familyDocId', isEqualTo: familyDocId)
         .count()
         .get();
@@ -248,7 +248,7 @@ class UserMemberListScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Family Members')),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('members')
+            .collectionGroup('members')
             .where('familyDocId', isEqualTo: familyDocId)
             .orderBy('fullName')
             .snapshots(),

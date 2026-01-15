@@ -323,6 +323,8 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                 _buildDetailRow('Mother Name', member.motherName),
               _buildDetailRow('Age', '${member.age} years'),
               _buildDetailRow('Birth Date', member.birthDate),
+              if (member.education.isNotEmpty)
+                _buildDetailRow('Education', member.education), // Added
               if (member.tod.isNotEmpty)
                 _buildDetailRow('Date of Death', member.tod),
               if (member.bloodGroup.isNotEmpty)

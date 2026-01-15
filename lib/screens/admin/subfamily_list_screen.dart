@@ -1,9 +1,10 @@
 // ignore_for_file: unused_import
 
 import 'package:flutter/material.dart';
-import '../models/subfamily_model.dart';
-import '../services/subfamily_service.dart';
-import '../services/family_service.dart';
+import '../../models/subfamily_model.dart';
+import '../../services/subfamily_service.dart';
+import '../../services/family_service.dart';
+import '../../services/member_service.dart'; // Added MemberService
 import 'member_list_screen.dart';
 
 class SubFamilyListScreen extends StatefulWidget {
@@ -32,33 +33,19 @@ class _SubFamilyListScreenState extends State<SubFamilyListScreen> {
       appBar: AppBar(
         title: Text('${widget.mainFamilyName} - Sub Families'),
         backgroundColor: Colors.blue.shade900,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddSubFamilyScreen(
-                    mainFamilyDocId: widget.mainFamilyDocId,
-                    mainFamilyId: widget.mainFamilyId,
-                    mainFamilyName: widget.mainFamilyName,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(12.0),
             child: TextField(
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 hintText: 'Search sub-families...',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16),
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
@@ -105,194 +92,212 @@ class _SubFamilyListScreenState extends State<SubFamilyListScreen> {
                   );
                 }
 
-                return ListView.builder(
+                return GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.85,
+                  ),
                   itemCount: subFamilies.length,
                   itemBuilder: (context, index) {
                     final subFamily = subFamilies[index];
+                    final isActive = subFamily.isActive;
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      elevation: 3,
-                      color: subFamily.isActive
-                          ? Colors.white
-                          : Colors.grey.shade200,
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MemberListScreen(
-                                familyDocId: widget.mainFamilyDocId,
-                                familyName: subFamily.subFamilyName,
-                                subFamilyDocId: subFamily.id,
-                              ),
+                    return InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MemberListScreen(
+                              familyDocId: widget.mainFamilyDocId,
+                              familyName: subFamily.subFamilyName,
+                              subFamilyDocId: subFamily.id,
                             ),
-                          );
-                        },
-                        onLongPress: () async {
-                          // Show edit/delete options
-                          final result = await showModalBottomSheet<String>(
-                            context: context,
-                            builder: (context) => Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
-                                  ),
-                                  title: const Text('Edit Sub Family'),
-                                  onTap: () => Navigator.pop(context, 'edit'),
-                                ),
-                                ListTile(
-                                  leading: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                  ),
-                                  title: const Text('Delete Sub Family'),
-                                  onTap: () => Navigator.pop(context, 'delete'),
-                                ),
-                                ListTile(
-                                  leading: Icon(
-                                    subFamily.isActive
-                                        ? Icons.block
-                                        : Icons.check_circle,
-                                    color: subFamily.isActive
-                                        ? Colors.orange
-                                        : Colors.green,
-                                  ),
-                                  title: Text(
-                                    subFamily.isActive
-                                        ? 'Deactivate'
-                                        : 'Activate',
-                                  ),
-                                  onTap: () => Navigator.pop(context, 'toggle'),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (result == 'edit') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => EditSubFamilyScreen(
-                                  subFamily: subFamily,
-                                  mainFamilyDocId: widget.mainFamilyDocId,
-                                ),
-                              ),
-                            );
-                          } else if (result == 'delete') {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (_) => AlertDialog(
-                                title: const Text('Delete Sub Family'),
-                                content: const Text(
-                                  'Are you sure you want to delete this sub family and all its members?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
+                          ),
+                        );
+                      },
+                      child: Card(
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        color: isActive ? Colors.white : Colors.grey.shade200,
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // HEADER
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 14,
+                                    backgroundColor: isActive
+                                        ? Colors.blue.shade900
+                                        : Colors.grey,
+                                    child: const Icon(
+                                      Icons.groups_2_rounded,
+                                      size: 14,
+                                      color: Colors.white,
                                     ),
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    child: const Text('Delete'),
                                   ),
+                                  const Spacer(),
+                                  if (!isActive)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade100,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'INACTIVE',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.red.shade700,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
-                            );
-                            if (confirm == true) {
-                              await _subFamilyService.deleteSubFamily(
-                                mainFamilyDocId: widget.mainFamilyDocId,
-                                subFamilyDocId: subFamily.id,
-                              );
-                            }
-                          } else if (result == 'toggle') {
-                            await _subFamilyService.toggleSubFamilyStatus(
-                              mainFamilyDocId: widget.mainFamilyDocId,
-                              subFamilyDocId: subFamily.id,
-                            );
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              // Icon
-                              Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.blue.shade900,
-                                ),
-                                child: const Icon(
-                                  Icons.family_restroom,
-                                  color: Colors.white,
-                                  size: 30,
+                              const SizedBox(height: 8),
+
+                              // SUB FAMILY NAME
+                              Text(
+                                subFamily.subFamilyName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: isActive
+                                      ? Colors.black
+                                      : Colors.grey.shade700,
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              // Sub Family Info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Name
-                                    Text(
-                                      subFamily.subFamilyName,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: subFamily.isActive
-                                            ? Colors.black87
-                                            : Colors.grey.shade700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // Head of Family
-                                    Text(
-                                      'Head: ${subFamily.headOfFamily}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: subFamily.isActive
-                                            ? Colors.black54
-                                            : Colors.grey.shade600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // Member Count
-                                    Text(
-                                      '${subFamily.memberCount} members',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.blue.shade600,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
+
+                              const SizedBox(height: 4),
+
+                              // HEAD OF FAMILY
+                              Text(
+                                subFamily.headOfFamily,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
                                 ),
                               ),
-                              // Status Indicator
-                              Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: subFamily.isActive
-                                      ? Colors.green
-                                      : Colors.grey,
+
+                              // REAL-TIME MEMBER COUNT
+                              FutureBuilder<int>(
+                                future: MemberService().getSubFamilyMemberCount(
+                                  widget.mainFamilyDocId,
+                                  subFamily.id,
                                 ),
+                                builder: (context, countSnap) {
+                                  final count = countSnap.data ?? 0;
+                                  return Text(
+                                    '$count members',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.blue.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  );
+                                },
+                              ),
+
+                              const Spacer(),
+
+                              // ACTIONS
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
+                                children: [
+                                  // EDIT
+                                  _buildCompactAction(
+                                    icon: Icons.edit,
+                                    color: Colors.blue,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => EditSubFamilyScreen(
+                                            subFamily: subFamily,
+                                            mainFamilyDocId:
+                                                widget.mainFamilyDocId,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+
+                                  // TOGGLE STATUS
+                                  _buildCompactAction(
+                                    icon: isActive
+                                        ? Icons.check_circle
+                                        : Icons.block,
+                                    color: isActive
+                                        ? Colors.green
+                                        : Colors.grey,
+                                    onTap: () async {
+                                      await _subFamilyService
+                                          .toggleSubFamilyStatus(
+                                        mainFamilyDocId:
+                                            widget.mainFamilyDocId,
+                                        subFamilyDocId: subFamily.id,
+                                      );
+                                    },
+                                  ),
+
+                                  // DELETE
+                                  _buildCompactAction(
+                                    icon: Icons.delete,
+                                    color: Colors.red,
+                                    onTap: () async {
+                                      final ok = await showDialog<bool>(
+                                        context: context,
+                                        builder: (c) => AlertDialog(
+                                          title: const Text(
+                                              'Delete Sub Family'),
+                                          content: const Text(
+                                            'Are you sure? This deletes all members.',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(c, false),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.red,
+                                              ),
+                                              onPressed: () =>
+                                                  Navigator.pop(c, true),
+                                              child: const Text('Delete'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (ok == true) {
+                                        await _subFamilyService
+                                            .deleteSubFamily(
+                                          mainFamilyDocId:
+                                              widget.mainFamilyDocId,
+                                          subFamilyDocId: subFamily.id,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -322,6 +327,21 @@ class _SubFamilyListScreenState extends State<SubFamilyListScreen> {
           );
         },
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildCompactAction({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        child: Icon(icon, size: 18, color: color),
       ),
     );
   }

@@ -12,79 +12,76 @@ class AuthService {
   static const String ADMIN_ID = '83288';
 
   Future<LoginResponse> login({
-    required String familyId,
+    required String loginId,
     required String password,
   }) async {
     try {
-      final fid = familyId.trim();
+      final id = loginId.trim();
       final pwd = password.trim();
 
       // ---------------- VALIDATION ----------------
-      if (fid.isEmpty || pwd.isEmpty) {
+      if (id.isEmpty || pwd.isEmpty) {
         return LoginResponse(
           success: false,
-          message: 'Family ID and password required',
+          message: 'ID and password required',
           isAdmin: false,
         );
       }
 
-      // ---------------- ADMIN LOGIN ----------------
-      if (fid == ADMIN_ID) {
-        final adminSnap = await _firestore
-            .collection('families')
-            .doc(ADMIN_ID)
-            .get();
+      // ---------------- ADMIN LOGIN (ADM-83288) ----------------
+      if (id.startsWith('ADM-')) {
+        final adminId = id.substring(4); // Remove 'ADM-'
+        if (adminId == ADMIN_ID) {
+          final adminSnap = await _firestore
+              .collection('families')
+              .doc(ADMIN_ID)
+              .get();
 
-        if (!adminSnap.exists || adminSnap['password'] != pwd) {
+          if (!adminSnap.exists || (adminSnap.data()?['password'] ?? '') != pwd) {
+            return LoginResponse(
+              success: false,
+              message: 'Invalid admin credentials',
+              isAdmin: false,
+            );
+          }
+
+          await SessionManager.saveSession(
+            familyDocId: adminSnap.id,
+            familyId: adminSnap.data()?['familyId'] ?? 0,
+            isAdmin: true,
+            role: 'admin',
+            familyName: adminSnap.data()?['familyName'] ?? 'Admin',
+          );
+
           return LoginResponse(
-            success: false,
-            message: 'Invalid admin credentials',
-            isAdmin: false,
+            success: true,
+            message: 'Admin login successful',
+            isAdmin: true,
+            role: 'admin',
           );
         }
-
-        await SessionManager.saveSession(
-          familyDocId: adminSnap.id,
-          familyId: 0,
-          isAdmin: true,
-          role: 'admin',
-          familyName: adminSnap['familyName'] ?? 'Admin',
-        );
-
-        return LoginResponse(
-          success: true,
-          message: 'Admin login successful',
-          isAdmin: true,
-        );
       }
 
-      // ---------------- FAMILY LOGIN ----------------
-      if (fid.length != 6 || int.tryParse(fid) == null) {
-        return LoginResponse(
-          success: false,
-          message: 'Family ID must be 6 digits',
-          isAdmin: false,
-        );
-      }
-
-      final query = await _firestore
-          .collection('families')
-          .where('familyId', isEqualTo: int.parse(fid))
+      // ---------------- MEMBER/MANAGER LOGIN (MID) ----------------
+      // Use collectionGroup to find the member by MID across all families/subfamilies
+      final memberQuery = await _firestore
+          .collectionGroup('members')
+          .where('mid', isEqualTo: id)
           .limit(1)
           .get();
 
-      if (query.docs.isEmpty) {
+      if (memberQuery.docs.isEmpty) {
         return LoginResponse(
           success: false,
-          message: 'Family not found',
+          message: 'Member not found with this MID',
           isAdmin: false,
         );
       }
 
-      final doc = query.docs.first;
-      final data = doc.data();
-
-      if (data['password'] != pwd) {
+      final memberDoc = memberQuery.docs.first;
+      final memberData = memberDoc.data();
+      
+      if (memberData['password'] != pwd) {
         return LoginResponse(
           success: false,
           message: 'Incorrect password',
@@ -92,18 +89,31 @@ class AuthService {
         );
       }
 
+      final role = memberData['role'] ?? 'member';
+      final isAdmin = role == 'admin'; // Should rarely happen via MID but safety first
+
+      // Save session with detailed member info
       await SessionManager.saveSession(
-        familyDocId: doc.id,
-        familyId: data['familyId'],
-        isAdmin: false,
-        role: 'member',
-        familyName: data['familyName'] ?? '',
+        familyDocId: memberData['familyDocId'] ?? '',
+        familyId: int.tryParse(memberData['familyId']?.toString() ?? '0') ?? 0,
+        isAdmin: isAdmin,
+        role: role,
+        familyName: memberData['familyName'] ?? '',
+        memberId: memberData['mid'] ?? '',
+      );
+
+      // Also save member-specific session info
+      await SessionManager.saveMemberSession(
+        mainFamilyDocId: memberData['familyDocId'] ?? '',
+        subFamilyDocId: memberData['subFamilyDocId'] ?? '',
+        memberDocId: memberDoc.id,
       );
 
       return LoginResponse(
         success: true,
-        message: 'Login successful',
-        isAdmin: false,
+        message: 'Login successful as ${role.toUpperCase()}',
+        isAdmin: isAdmin,
+        role: role,
       );
     } catch (e) {
       return LoginResponse(

@@ -63,7 +63,7 @@ class PhotoService {
   /// Get optimized/thumbnail URL for profile photo
   String getOptimizedUrl(String photoUrl, {int width = 200, int height = 200}) {
     // Format the URL properly for ImageKit
-    final formattedUrl = _imageKitService.formatImageKitUrl(
+    final formattedUrl = _imageKitService.getOptimizedUrl(
       photoUrl,
       width: width,
       height: height,

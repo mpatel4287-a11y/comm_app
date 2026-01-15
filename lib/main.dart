@@ -5,14 +5,15 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
 import 'auth/login_screen.dart';
-import 'admin/admin_dashboard.dart';
-import 'admin/family_list_screen.dart';
-import 'admin/member_list_screen.dart';
-import 'user/user_dashboard.dart';
+// Updated imports to use lib/screens/admin/
+import 'screens/admin/admin_dashboard.dart';
+import 'screens/admin/family_list_screen.dart';
+import 'screens/admin/member_list_screen.dart';
 import 'screens/admin/group_management_screen.dart';
 import 'screens/admin/event_management_screen.dart';
 import 'screens/admin/analytics_dashboard.dart';
 import 'screens/admin/system_health_screen.dart';
+import 'user/user_dashboard.dart';
 import 'screens/user/settings_screen.dart';
 import 'screens/user/member_detail_screen.dart';
 import 'services/session_manager.dart';
@@ -63,6 +64,7 @@ class MyApp extends StatelessWidget {
             builder: (_) => MemberListScreen(
               familyDocId: args['familyDocId'],
               familyName: args['familyName'],
+              subFamilyDocId: args['subFamilyDocId'], // NEW: Pass subFamilyDocId
             ),
           );
         }

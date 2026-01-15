@@ -1,5 +1,11 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/family_service.dart';
+import 'add_family_screen.dart';
+import 'edit_family_screen.dart';
+import 'subfamily_list_screen.dart';
 
 class FamilyListScreen extends StatelessWidget {
   const FamilyListScreen({super.key});
@@ -7,12 +13,14 @@ class FamilyListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Families')),
+      appBar: AppBar(
+        title: const Text('Families'),
+        backgroundColor: Colors.blue.shade900,
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('families')
             .where('isAdmin', isEqualTo: false)
-            .orderBy('familyId')
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -24,6 +32,12 @@ class FamilyListScreen extends StatelessWidget {
           }
 
           final families = snapshot.data!.docs;
+          // Client-side sort by familyId
+          families.sort((a, b) {
+            final idA = (a.data() as Map<String, dynamic>)['familyId'] ?? '';
+            final idB = (b.data() as Map<String, dynamic>)['familyId'] ?? '';
+            return idA.toString().compareTo(idB.toString());
+          });
 
           return GridView.builder(
             padding: const EdgeInsets.all(12),
@@ -31,7 +45,7 @@ class FamilyListScreen extends StatelessWidget {
               crossAxisCount: 2,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 1.2,
+              childAspectRatio: 0.85, // Slightly taller to prevent overflow
             ),
             itemCount: families.length,
             itemBuilder: (context, index) {
@@ -45,16 +59,15 @@ class FamilyListScreen extends StatelessWidget {
 
               return InkWell(
                 onTap: () {
-                  // 🔒 NEXT PHASE:
-                  // Navigate to family members screen
-                  Navigator.pushNamed(
+                  Navigator.push(
                     context,
-                    '/admin/family',
-                    arguments: {
-                      'familyDocId': doc.id,
-                      'familyName': familyName,
-                      'familyId': familyId,
-                    },
+                    MaterialPageRoute(
+                      builder: (_) => SubFamilyListScreen(
+                        mainFamilyDocId: doc.id,
+                        mainFamilyId: familyId,
+                        mainFamilyName: familyName,
+                      ),
+                    ),
                   );
                 },
                 child: Card(
@@ -62,97 +75,118 @@ class FamilyListScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  color: isBlocked ? Colors.grey.shade200 : Colors.white,
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10), // Reduced padding
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // HEADER WITH ICON
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 14,
+                              backgroundColor: isBlocked
+                                  ? Colors.grey
+                                  : Colors.blue.shade900,
+                              child: const Icon(
+                                Icons.family_restroom,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (isBlocked)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade100,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'BLOCKED',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
                         // FAMILY NAME
                         Text(
                           familyName,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
+                          style: TextStyle(
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
+                            color:
+                                isBlocked ? Colors.grey.shade700 : Colors.black,
                           ),
                         ),
 
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
 
                         // FAMILY ID
                         Text(
                           'ID: $familyId',
-                          style: const TextStyle(color: Colors.grey),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
                         ),
 
                         const Spacer(),
 
-                        // STATUS + ACTIONS
+                        // ACTIONS
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isBlocked
-                                    ? Colors.red.shade100
-                                    : Colors.green.shade100,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                isBlocked ? 'Blocked' : 'Active',
-                                style: TextStyle(
-                                  color: isBlocked ? Colors.red : Colors.green,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-
                             // EDIT
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 20),
-                              onPressed: () {
-                                Navigator.pushNamed(
+                            _buildCompactAction(
+                              icon: Icons.edit,
+                              color: Colors.blue,
+                              onTap: () {
+                                Navigator.push(
                                   context,
-                                  '/admin/editFamily',
-                                  arguments: doc.id,
+                                  MaterialPageRoute(
+                                    builder: (_) => EditFamilyScreen(
+                                      docId: doc.id,
+                                      data: data,
+                                    ),
+                                  ),
                                 );
                               },
                             ),
 
                             // BLOCK / UNBLOCK
-                            IconButton(
-                              icon: Icon(
-                                isBlocked ? Icons.lock_open : Icons.block,
-                                size: 20,
-                              ),
-                              onPressed: () async {
-                                await FirebaseFirestore.instance
-                                    .collection('families')
-                                    .doc(doc.id)
-                                    .update({'isBlocked': !isBlocked});
+                            _buildCompactAction(
+                              icon: isBlocked ? Icons.lock_open : Icons.block,
+                              color: isBlocked ? Colors.green : Colors.orange,
+                              onTap: () async {
+                                await FamilyService()
+                                    .toggleBlockFamily(doc.id);
                               },
                             ),
 
                             // DELETE
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                size: 20,
-                                color: Colors.red,
-                              ),
-                              onPressed: () async {
+                            _buildCompactAction(
+                              icon: Icons.delete,
+                              color: Colors.red,
+                              onTap: () async {
                                 final ok = await showDialog<bool>(
                                   context: context,
                                   builder: (c) => AlertDialog(
                                     title: const Text('Delete Family'),
                                     content: const Text(
-                                      'Are you sure you want to delete this family?',
+                                      'Are you sure? This deletes all members.',
                                     ),
                                     actions: [
                                       TextButton(
@@ -164,7 +198,8 @@ class FamilyListScreen extends StatelessWidget {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.red,
                                         ),
-                                        onPressed: () => Navigator.pop(c, true),
+                                        onPressed: () =>
+                                            Navigator.pop(c, true),
                                         child: const Text('Delete'),
                                       ),
                                     ],
@@ -172,10 +207,7 @@ class FamilyListScreen extends StatelessWidget {
                                 );
 
                                 if (ok == true) {
-                                  await FirebaseFirestore.instance
-                                      .collection('families')
-                                      .doc(doc.id)
-                                      .delete();
+                                  await FamilyService().deleteFamily(doc.id);
                                 }
                               },
                             ),
@@ -189,6 +221,32 @@ class FamilyListScreen extends StatelessWidget {
             },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.blue.shade900,
+        foregroundColor: Colors.white,
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddFamilyScreen()),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildCompactAction({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        child: Icon(icon, size: 18, color: color),
       ),
     );
   }
