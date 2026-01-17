@@ -1,5 +1,7 @@
 // lib/models/member_model.dart
 
+import 'dart:math';
+
 class MemberModel {
   // Identity
   final String id;
@@ -119,16 +121,20 @@ class MemberModel {
     // Sub-family ID (ensure it's padded if needed, but usually is "01", etc.)
     final subPart = subFamilyId.padLeft(2, '0');
     
-    // Random 3-digit part
-    final random = (100 + (DateTime.now().millisecond % 900)).toString();
+    // Truly random 3-digit part (100-999)
+    final random = (100 + Random().nextInt(900)).toString();
     
     return 'F-$familyHash-S$subPart-$random';
   }
 
   static String _generateFamilyHash(String familyId) {
+    // Normalize: trim and pad to 2 digits (e.g., "1" -> "01")
+    // This ensures consistent hashes even if input formatting varies
+    final normalizedId = familyId.trim().padLeft(2, '0');
+    
     // Deterministic 3-char alphanumeric hash for the 2-digit familyId
     // Seeded with a salt to avoid direct predictability
-    final input = 'FAM_PREFIX_$familyId';
+    final input = 'FAM_PREFIX_$normalizedId';
     int hash = 0;
     for (int i = 0; i < input.length; i++) {
         hash = (hash * 31 + input.codeUnitAt(i)) & 0xFFFFFFFF;

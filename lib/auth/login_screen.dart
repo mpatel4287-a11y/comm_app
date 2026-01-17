@@ -97,7 +97,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
@@ -105,14 +104,14 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Logo or Icon
-              Icon(Icons.lock_person_rounded, size: 80, color: Colors.blue.shade900),
+              Icon(Icons.lock_person_rounded, size: 80, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 24),
               Text(
                 _isAdminMode ? 'Admin Portal' : 'Community Login',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade900,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 32),
@@ -179,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 50,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade900,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -198,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Text(
                   'developer',
                   style: TextStyle(
-                    color: Colors.blue.shade900,
+                    color: Theme.of(context).colorScheme.primary,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     decoration: TextDecoration.underline,
@@ -221,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Colors.blue.shade900,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
     );
@@ -240,8 +239,8 @@ class _LoginScreenState extends State<LoginScreen> {
           hintText: hint,
           counterText: '',
           contentPadding: const EdgeInsets.symmetric(vertical: 8),
-          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue.shade200)),
-          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue.shade900, width: 2)),
+          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))),
+          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
         ),
         onChanged: (v) {
           if (v.length == length) {

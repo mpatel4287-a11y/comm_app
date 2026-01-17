@@ -2,9 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../services/session_manager.dart';
-import '../../models/member_model.dart';
-import '../../screens/user/member_detail_screen.dart';
+import '../services/session_manager.dart';
+import '../models/member_model.dart';
+import '../screens/user/member_detail_screen.dart';
+import '../services/theme_service.dart';
+import 'package:provider/provider.dart';
 
 class UserDashboard extends StatefulWidget {
   const UserDashboard({super.key});
@@ -26,22 +28,34 @@ class _UserDashboardState extends State<UserDashboard> {
   }
 
   Future<void> _loadData() async {
-    final familyDocId = await SessionManager.getFamilyDocId() ?? '';
-    final familyName = await SessionManager.getFamilyName() ?? '';
+    try {
+      final familyDocId = await SessionManager.getFamilyDocId() ?? '';
+      final familyName = await SessionManager.getFamilyName() ?? '';
 
-    // Get member count
-    final snapshot = await FirebaseFirestore.instance
-        .collectionGroup('members')
-        .where('familyDocId', isEqualTo: familyDocId)
-        .count()
-        .get();
+      // Get member count
+      final snapshot = await FirebaseFirestore.instance
+          .collectionGroup('members')
+          .where('familyDocId', isEqualTo: familyDocId)
+          .count()
+          .get();
 
-    setState(() {
-      _familyDocId = familyDocId;
-      _familyName = familyName;
-      _memberCount = snapshot.count ?? 0;
-      _loading = false;
-    });
+      setState(() {
+        _familyDocId = familyDocId;
+        _familyName = familyName;
+        _memberCount = snapshot.count ?? 0;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading dashboard: $e');
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading dashboard: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -75,11 +89,16 @@ class _UserDashboardState extends State<UserDashboard> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final themeService = Provider.of<ThemeService>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('User Dashboard'),
-        backgroundColor: Colors.blue.shade900,
         actions: [
+          IconButton(
+            icon: Icon(themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () => themeService.toggleTheme(),
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
@@ -99,7 +118,7 @@ class _UserDashboardState extends State<UserDashboard> {
           children: [
             // Family Card
             Card(
-              color: Colors.blue.shade900,
+              color: Theme.of(context).colorScheme.primary,
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -226,7 +245,7 @@ class _UserDashboardState extends State<UserDashboard> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Icon(icon, size: 32, color: Colors.blue.shade900),
+              Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 8),
               Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
             ],

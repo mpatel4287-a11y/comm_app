@@ -17,11 +17,22 @@ import 'user/user_dashboard.dart';
 import 'screens/user/settings_screen.dart';
 import 'screens/user/member_detail_screen.dart';
 import 'services/session_manager.dart';
+import 'services/theme_service.dart';
+import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  
+  final themeService = ThemeService();
+  await themeService.initialize();
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => themeService,
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -29,10 +40,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeService = Provider.of<ThemeService>(context);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Community App',
-      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+      theme: themeService.getTheme(),
       // Always start from login - the login screen will check session and redirect
       home: const LoginScreen(),
       routes: {

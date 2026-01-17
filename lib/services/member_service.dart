@@ -322,16 +322,18 @@ class MemberService {
 
   // ---------------- GET MEMBER BY MID (3-digit) ----------------
   Future<MemberModel?> getMemberByMid(String mid) async {
-    // Since MID is not unique across families, we need to search all families
-    final snapshot = await _firestore.collectionGroup('members').get();
+    final snapshot = await _firestore
+        .collectionGroup('members')
+        .where('mid', isEqualTo: mid)
+        .limit(1)
+        .get();
 
-    for (final doc in snapshot.docs) {
-      if (doc['mid'] == mid) {
-        return MemberModel.fromMap(doc.id, doc.data());
-      }
+    if (snapshot.docs.isNotEmpty) {
+      final doc = snapshot.docs.first;
+      return MemberModel.fromMap(doc.id, doc.data());
     }
-    return null; // Added missing return null
-  } // Added missing closing brace
+    return null;
+  }
 
   // ---------------- GET UNIQUE MEMBER COUNT FOR SUB-FAMILY ----------------
   Future<int> getSubFamilyMemberCount(

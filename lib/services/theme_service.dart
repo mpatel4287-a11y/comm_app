@@ -33,11 +33,16 @@ class ThemeService extends ChangeNotifier {
   static final ThemeData _lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    primaryColor: Colors.blue.shade900,
-    scaffoldBackgroundColor: Colors.grey.shade50,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: Colors.blue.shade900,
+      brightness: Brightness.light,
+    ).copyWith(
+      primary: Colors.blue.shade900,
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.blue.shade900,
       foregroundColor: Colors.white,
+      elevation: 0,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -45,30 +50,17 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Colors.white,
       ),
     ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: Colors.blue.shade900,
-      foregroundColor: Colors.white,
-    ),
   );
 
   static final ThemeData _darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    primaryColor: Colors.blue.shade200,
-    scaffoldBackgroundColor: Colors.grey.shade900,
-    appBarTheme: AppBarTheme(
-      backgroundColor: Colors.grey.shade800,
-      foregroundColor: Colors.white,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: Colors.blue.shade900,
+      brightness: Brightness.dark,
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue.shade200,
-        foregroundColor: Colors.grey.shade900,
-      ),
-    ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: Colors.blue.shade200,
-      foregroundColor: Colors.grey.shade900,
+    appBarTheme: const AppBarTheme(
+      elevation: 0,
     ),
   );
 }

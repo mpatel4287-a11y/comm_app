@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/session_manager.dart';
+import '../../services/theme_service.dart';
+import 'package:provider/provider.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -54,11 +56,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     final isManager = _role == 'manager';
 
+    final themeService = Provider.of<ThemeService>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(isManager ? 'Manager Portal' : 'Admin Dashboard'),
-        backgroundColor: Colors.blue.shade900,
         actions: [
+          IconButton(
+            icon: Icon(themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () => themeService.toggleTheme(),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _logout(context),
