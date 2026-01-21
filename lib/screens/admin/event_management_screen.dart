@@ -20,6 +20,8 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
   String _selectedType = 'general';
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   String? _familyDocId;
+  String? _role;
+  bool _loading = false;
 
   @override
   void initState() {
@@ -29,7 +31,11 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
 
   Future<void> _loadFamilyDocId() async {
     final docId = await SessionManager.getFamilyDocId();
-    setState(() => _familyDocId = docId);
+    final role = await SessionManager.getRole();
+    setState(() {
+      _familyDocId = docId;
+      _role = role;
+    });
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -55,9 +61,11 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
         title: const Text('Event Management'),
         backgroundColor: Colors.blue.shade900,
       ),
-      body: StreamBuilder<List<EventModel>>(
-        stream: _eventService.streamAllEvents(),
-        builder: (context, snapshot) {
+      body: Stack(
+        children: [
+          StreamBuilder<List<EventModel>>(
+            stream: _eventService.streamAllEvents(),
+            builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -108,7 +116,14 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
               ],
             ],
           );
-        },
+            },
+          ),
+          if (_loading)
+            Container(
+              color: Colors.black26,
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.blue.shade900,
@@ -146,6 +161,23 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
           onSelected: (value) async {
             if (value == 'edit') {
               _showEditDialog(event);
+            } else if (value == 'reminder') {
+              setState(() => _loading = true);
+              try {
+                await _eventService.sendEventReminder(
+                  event: event,
+                  triggeredBy: _role ?? 'admin',
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Reminder sent to all members')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                );
+              } finally {
+                setState(() => _loading = false);
+              }
             } else if (value == 'attendance') {
               Navigator.pushNamed(
                 context,
@@ -182,6 +214,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
           },
           itemBuilder: (context) => [
             const PopupMenuItem(value: 'edit', child: Text('Edit')),
+            const PopupMenuItem(value: 'reminder', child: Text('Send Reminder')),
             const PopupMenuItem(value: 'attendance', child: Text('Attendance')),
             const PopupMenuItem(
               value: 'delete',
@@ -292,7 +325,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                 location: _locationCtrl.text.trim(),
                 date: _selectedDate,
                 type: _selectedType,
-                createdBy: 'admin',
+                createdBy: _role ?? 'admin',
                 familyDocId: _familyDocId ?? '',
               );
               Navigator.pop(context);

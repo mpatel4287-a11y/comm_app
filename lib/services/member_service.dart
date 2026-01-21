@@ -154,6 +154,19 @@ class MemberService {
     ).doc(memberId).update(updates);
   }
 
+  // ---------------- UPDATE MEMBER ROLE ----------------
+  Future<void> updateMemberRole({
+    required String mainFamilyDocId,
+    required String subFamilyDocId,
+    required String memberId,
+    required String newRole,
+  }) async {
+    await _getMembersCollection(
+      mainFamilyDocId,
+      subFamilyDocId,
+    ).doc(memberId).update({'role': newRole});
+  }
+
   // ---------------- DELETE MEMBER ----------------
   Future<void> deleteMember({
     required String mainFamilyDocId,

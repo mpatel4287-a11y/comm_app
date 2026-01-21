@@ -9,6 +9,10 @@ class SessionManager {
   static const _keyMemberId = 'member_id';
   static const _keySubFamilyDocId = 'sub_family_doc_id';
   static const _keyMemberDocId = 'member_doc_id';
+  static const _keyLanguage = 'language_code';
+  static const _keySavedLoginId = 'saved_login_id';
+  static const _keySavedPassword = 'saved_password';
+  static const _keyBiometricEnabled = 'biometric_enabled';
 
   // SAVE SESSION (Family level)
   static Future<void> saveSession({
@@ -87,9 +91,53 @@ class SessionManager {
     return prefs.getString(_keyFamilyDocId) != null;
   }
 
+  // LANGUAGE
+  static Future<void> setLanguage(String lang) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyLanguage, lang);
+  }
+
+  static Future<String?> getLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyLanguage);
+  }
+
+  // SAVED CREDENTIALS (For Biometrics)
+  static Future<void> saveCredentials(String loginId, String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keySavedLoginId, loginId);
+    await prefs.setString(_keySavedPassword, password);
+    await prefs.setBool(_keyBiometricEnabled, true);
+  }
+
+  static Future<Map<String, String>?> getSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_keySavedLoginId);
+    final pwd = prefs.getString(_keySavedPassword);
+    if (id != null && pwd != null) {
+      return {'loginId': id, 'password': pwd};
+    }
+    return null;
+  }
+
+  static Future<bool> isBiometricEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyBiometricEnabled) ?? false;
+  }
+
   // CLEAR SESSION
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
+    final lang = prefs.getString(_keyLanguage);
+    final sid = prefs.getString(_keySavedLoginId);
+    final spwd = prefs.getString(_keySavedPassword);
+    final bio = prefs.getBool(_keyBiometricEnabled);
+
     await prefs.clear();
+
+    if (lang != null) await prefs.setString(_keyLanguage, lang);
+    if (sid != null) await prefs.setString(_keySavedLoginId, sid);
+    if (spwd != null) await prefs.setString(_keySavedPassword, spwd);
+    if (bio != null) await prefs.setBool(_keyBiometricEnabled, bio);
   }
 }

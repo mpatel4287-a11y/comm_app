@@ -8,7 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../models/member_model.dart';
 import '../../../services/member_service.dart';
 import '../../../services/session_manager.dart';
-import 'qr_share_screen.dart';
+import '../../../services/language_service.dart';
+import 'package:provider/provider.dart';
 
 // Helper widget to handle profile images with error handling
 class ProfileImage extends StatefulWidget {
@@ -81,6 +82,8 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   MemberModel? _member;
   bool _loading = true;
   String? _familyDocId;
+  String? _currentUserRole;
+  bool _isAdmin = false;
 
   @override
   void initState() {
@@ -100,9 +103,14 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
       subFamilyDocId: widget.subFamilyDocId ?? '',
       memberId: widget.memberId,
     );
+    final isAdmin = await SessionManager.getIsAdmin() ?? false;
+    final userRole = await SessionManager.getRole() ?? 'member';
+
     setState(() {
       _member = member;
       _familyDocId = docId;
+      _isAdmin = isAdmin;
+      _currentUserRole = userRole;
       _loading = false;
     });
   }
@@ -129,6 +137,7 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
   }
 
   void _showShareOptions() {
+    final lang = Provider.of<LanguageService>(context, listen: false);
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -136,33 +145,28 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Share Profile',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              lang.translate('share_profile'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.qr_code),
-              title: const Text('Share via QR Code'),
+              leading: const Icon(Icons.badge_rounded, color: Colors.blue),
+              title: Text(lang.translate('digital_id')),
               onTap: () {
                 Navigator.pop(context);
                 if (_member != null) {
-                  Navigator.push(
+                  Navigator.pushNamed(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => QRShareScreen(
-                        memberId: _member!.id,
-                        memberName: _member!.fullName,
-                        memberMid: _member!.mid,
-                      ),
-                    ),
+                    '/user/digital-id',
+                    arguments: _member,
                   );
                 }
               },
             ),
             ListTile(
-              leading: const Icon(Icons.share),
-              title: const Text('Share Normally'),
+              leading: const Icon(Icons.share, color: Colors.green),
+              title: Text(lang.translate('share')),
               onTap: () {
                 Navigator.pop(context);
                 _shareNormally();
@@ -174,21 +178,72 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
     );
   }
 
+  Future<void> _toggleManagerRole() async {
+    if (_member == null || _familyDocId == null) return;
+    
+    final lang = Provider.of<LanguageService>(context, listen: false);
+    final isCurrentlyManager = _member!.role == 'manager';
+    final nextRole = isCurrentlyManager ? 'member' : 'manager';
+    final actionText = isCurrentlyManager ? lang.translate('demote_to_member').toLowerCase() : lang.translate('promote_to_manager').toLowerCase();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isCurrentlyManager ? lang.translate('demote_member') : lang.translate('promote_member')),
+        content: Text('${lang.translate('are_you_sure_role')} $actionText ${_member!.fullName}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(lang.translate('cancel'))),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(isCurrentlyManager ? lang.translate('demote') : lang.translate('promote')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _loading = true);
+      try {
+        await _memberService.updateMemberRole(
+          mainFamilyDocId: _familyDocId!,
+          subFamilyDocId: widget.subFamilyDocId ?? '',
+          memberId: _member!.id,
+          newRole: nextRole,
+        );
+        await _loadMember(); // Reload to update UI
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(isCurrentlyManager ? lang.translate('demoted_success') : lang.translate('promoted_success'))),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${lang.translate('error')}: $e'), backgroundColor: Colors.red),
+          );
+        }
+        setState(() => _loading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageService>(context);
+
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_member == null) {
-      return const Scaffold(body: Center(child: Text('Member not found')));
+      return Scaffold(body: Center(child: Text(lang.translate('member_not_found'))));
     }
 
     final member = _member!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Member Details'),
+        title: Text(lang.translate('member_details')),
         backgroundColor: Colors.blue.shade900,
         actions: [
           // More options menu
@@ -257,13 +312,13 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                     ],
                   ),
                 ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'share',
                 child: Row(
                   children: [
-                    Icon(Icons.share, color: Colors.blue, size: 20),
-                    SizedBox(width: 8),
-                    Text('Share Contact'),
+                    const Icon(Icons.share, color: Colors.blue, size: 20),
+                    const SizedBox(width: 8),
+                    Text(lang.translate('share_profile')),
                   ],
                 ),
               ),
@@ -298,6 +353,41 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                     style: const TextStyle(fontSize: 16, color: Colors.black54),
                   ),
                   const SizedBox(height: 8),
+                  if (member.role == 'manager')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange),
+                      ),
+                      child: Text(
+                        lang.translate('manager').toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  // Digital ID Button directly on profile
+                  ElevatedButton.icon(
+                    onPressed: () {
+                       Navigator.pushNamed(
+                        context,
+                        '/user/digital-id',
+                        arguments: member,
+                      );
+                    },
+                    icon: const Icon(Icons.badge_rounded),
+                    label: Text(lang.translate('digital_id')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade900,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   if (member.tags.isNotEmpty)
                     Wrap(
                       spacing: 8,
@@ -311,50 +401,50 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
             const SizedBox(height: 24),
 
             // Personal Information
-            _buildSectionHeader('Personal Information'),
+            _buildSectionHeader(lang.translate('personal_info')),
             _buildDetailCard([
-              _buildDetailRow('Member ID', member.mid),
-              _buildDetailRow('Full Name', member.fullName),
+              _buildDetailRow(lang.translate('member_id'), member.mid),
+              _buildDetailRow(lang.translate('full_name'), member.fullName),
               if (member.surname.isNotEmpty)
-                _buildDetailRow('Surname', member.surname),
+                _buildDetailRow(lang.translate('surname'), member.surname),
               if (member.fatherName.isNotEmpty)
-                _buildDetailRow('Father Name', member.fatherName),
+                _buildDetailRow(lang.translate('father_name'), member.fatherName),
               if (member.motherName.isNotEmpty)
-                _buildDetailRow('Mother Name', member.motherName),
-              _buildDetailRow('Age', '${member.age} years'),
-              _buildDetailRow('Birth Date', member.birthDate),
+                _buildDetailRow(lang.translate('mother_name'), member.motherName),
+              _buildDetailRow(lang.translate('age'), '${member.age} ${lang.translate('years')}'),
+              _buildDetailRow(lang.translate('birth_date'), member.birthDate),
               if (member.education.isNotEmpty)
-                _buildDetailRow('Education', member.education), // Added
+                _buildDetailRow(lang.translate('education'), member.education),
               if (member.tod.isNotEmpty)
-                _buildDetailRow('Date of Death', member.tod),
+                _buildDetailRow(lang.translate('date_of_death'), member.tod),
               if (member.bloodGroup.isNotEmpty)
-                _buildDetailRow('Blood Group', member.bloodGroup),
-              _buildDetailRow('Marriage Status', member.marriageStatus),
+                _buildDetailRow(lang.translate('blood_group'), member.bloodGroup),
+              _buildDetailRow(lang.translate('marriage_status'), member.marriageStatus),
               if (member.gotra.isNotEmpty)
-                _buildDetailRow('Gotra', member.gotra),
+                _buildDetailRow(lang.translate('gotra'), member.gotra),
               if (member.nativeHome.isNotEmpty)
-                _buildDetailRow('Native Home', member.nativeHome),
+                _buildDetailRow(lang.translate('native_home'), member.nativeHome),
             ]),
 
             const SizedBox(height: 16),
 
             // Family Information
-            _buildSectionHeader('Family Information'),
+            _buildSectionHeader(lang.translate('family_info')),
             _buildDetailCard([
-              _buildDetailRow('Family Name', member.familyName),
+              _buildDetailRow(lang.translate('family_name'), member.familyName),
               _buildDetailRow('DKT Family ID', member.familyId),
               if (member.parentMid.isNotEmpty)
-                _buildDetailRow('Parent Member ID', member.parentMid),
+                _buildDetailRow(lang.translate('parent_mid'), member.parentMid),
             ]),
 
             const SizedBox(height: 16),
 
             // Contact Information
-            _buildSectionHeader('Contact Information'),
+            _buildSectionHeader(lang.translate('contact_info')),
             _buildDetailCard([
-              _buildDetailRow('Phone', member.phone),
+              _buildDetailRow(lang.translate('phone'), member.phone),
               _buildLocationRow(
-                'Address',
+                lang.translate('address'),
                 member.address,
                 member.googleMapLink,
               ),
@@ -363,7 +453,7 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
             const SizedBox(height: 16),
 
             // Social Media
-            _buildSectionHeader('Social Media'),
+            _buildSectionHeader(lang.translate('social_media')),
             _buildDetailCard([
               if (member.whatsapp.isNotEmpty)
                 _buildSocialRow('WhatsApp', member.whatsapp, Icons.message),
@@ -433,6 +523,23 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
 
             // Social Media
             const SizedBox(height: 24),
+
+            // Admin Actions
+            if (_isAdmin) ...[
+              _buildSectionHeader(lang.translate('admin_actions')),
+              _buildDetailCard([
+                ListTile(
+                  leading: Icon(
+                    member.role == 'manager' ? Icons.person_remove : Icons.person_add,
+                    color: member.role == 'manager' ? Colors.red : Colors.green,
+                  ),
+                  title: Text(member.role == 'manager' ? lang.translate('demote_to_member') : lang.translate('promote_to_manager')),
+                  subtitle: Text(member.role == 'manager' ? lang.translate('demote_subtitle') : lang.translate('promote_subtitle')),
+                  onTap: _toggleManagerRole,
+                ),
+              ]),
+              const SizedBox(height: 32),
+            ],
           ],
         ),
       ),

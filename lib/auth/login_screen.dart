@@ -1,8 +1,11 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/session_manager.dart';
+import '../services/language_service.dart';
+import '../services/biometric_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,7 +16,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _auth = AuthService();
+  final _biometricService = BiometricService();
   final _passwordCtrl = TextEditingController();
+  
+  bool _canCheckBiometrics = false;
+  bool _biometricEnabled = false;
   
   // MID Parts
   final _midFamilyCtrl = TextEditingController();
@@ -31,6 +38,16 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _checkExistingSession();
+    _checkBiometrics();
+  }
+
+  Future<void> _checkBiometrics() async {
+    final isAvailable = await _biometricService.isBiometricsAvailable();
+    final isEnabled = await SessionManager.isBiometricEnabled();
+    setState(() {
+      _canCheckBiometrics = isAvailable;
+      _biometricEnabled = isEnabled;
+    });
   }
 
   Future<void> _checkExistingSession() async {
@@ -85,128 +102,200 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       
-      // Navigate based on role/admin status
-      if (res.isAdmin || res.role == 'manager') {
-        Navigator.pushReplacementNamed(context, '/admin');
+      if (res.success) {
+        // Save credentials for biometrics if successful
+        await SessionManager.saveCredentials(loginId, _passwordCtrl.text);
+        
+        // Navigate based on role/admin status
+        if (res.isAdmin || res.role == 'manager') {
+          Navigator.pushReplacementNamed(context, '/admin');
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
+      }
+    }
+  }
+
+  Future<void> _authenticateWithBiometrics() async {
+    final authenticated = await _biometricService.authenticate(
+      localizedReason: 'Please authenticate to login',
+    );
+
+    if (authenticated) {
+      final creds = await SessionManager.getSavedCredentials();
+      if (creds != null) {
+        setState(() => _loading = true);
+        final res = await _auth.login(
+          loginId: creds['loginId']!,
+          password: creds['password']!,
+        );
+        
+        if (mounted) {
+          setState(() => _loading = false);
+          if (res.success) {
+            if (res.isAdmin || res.role == 'manager') {
+              Navigator.pushReplacementNamed(context, '/admin');
+            } else {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          } else {
+            setState(() => _error = res.message);
+          }
+        }
       } else {
-        Navigator.pushReplacementNamed(context, '/home');
+        setState(() => _error = 'No saved credentials found. Please login once with password.');
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageService>(context);
+
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo or Icon
-              Icon(Icons.lock_person_rounded, size: 80, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: 24),
-              Text(
-                _isAdminMode ? 'Admin Portal' : 'Community Login',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Language Toggle
+            Positioned(
+              top: 16,
+              right: 16,
+              child: TextButton.icon(
+                onPressed: () {
+                  final newLang = lang.currentLanguage == 'en' ? 'gu' : 'en';
+                  lang.setLanguage(newLang);
+                },
+                icon: const Icon(Icons.language),
+                label: Text(lang.currentLanguage == 'en' ? 'GUJ' : 'ENG'),
+                style: TextButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                 ),
               ),
-              const SizedBox(height: 32),
-
-              if (!_isAdminMode) ...[
-                // MID INPUT (F-XXX-SXX-XXX)
-                const Text('Enter Member ID (MID)', style: TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildFixedLabel('F-'),
-                      _buildMidInput(_midFamilyCtrl, 3, 'XXX'),
-                      _buildFixedLabel('-S'),
-                      _buildMidInput(_midSubFamilyCtrl, 2, 'XX'),
-                      _buildFixedLabel('-'),
-                      _buildMidInput(_midRandomCtrl, 3, 'XXX'),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                // ADMIN ID INPUT (ADM-83288)
-                TextField(
-                  controller: _adminIdCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Admin Login ID (ADM-XXXXXXX)',
-                    prefixIcon: const Icon(Icons.admin_panel_settings),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 16),
-              
-              // PASSWORD INPUT
-              TextField(
-                controller: _passwordCtrl,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.key_rounded),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-
-              const SizedBox(height: 32),
-
-              _loading
-                  ? const CircularProgressIndicator()
-                  : SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: _login,
-                        child: Text(_isAdminMode ? 'CONTINUE AS ADMIN' : 'LOGIN'),
+            ),
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Logo or Icon
+                    Icon(Icons.lock_person_rounded, size: 80, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(height: 24),
+                    Text(
+                      _isAdminMode ? 'Admin Portal' : lang.translate('welcome_back'),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
-              
-              const SizedBox(height: 48),
+                    const SizedBox(height: 32),
 
-              // Hidden Developer Button
-              GestureDetector(
-                onTap: () {
-                  setState(() => _isAdminMode = !_isAdminMode);
-                },
-                child: Text(
-                  'developer',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    decoration: TextDecoration.underline,
-                    letterSpacing: 1.2,
-                  ),
+                    if (!_isAdminMode) ...[
+                      // MID INPUT (F-XXX-SXX-XXX)
+                      Text(lang.translate('username'), style: const TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildFixedLabel('F-'),
+                            _buildMidInput(_midFamilyCtrl, 3, 'XXX'),
+                            _buildFixedLabel('-S'),
+                            _buildMidInput(_midSubFamilyCtrl, 2, 'XX'),
+                            _buildFixedLabel('-'),
+                            _buildMidInput(_midRandomCtrl, 3, 'XXX'),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      // ADMIN ID INPUT (ADM-83288)
+                      TextField(
+                        controller: _adminIdCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Admin Login ID (ADM-XXXXXXX)',
+                          prefixIcon: const Icon(Icons.admin_panel_settings),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+                    
+                    // PASSWORD INPUT
+                    TextField(
+                      controller: _passwordCtrl,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: lang.translate('password'),
+                        prefixIcon: const Icon(Icons.key_rounded),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                    const SizedBox(height: 32),
+
+                    if (_loading)
+                      const CircularProgressIndicator()
+                    else ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: _login,
+                          child: Text(_isAdminMode ? 'CONTINUE AS ADMIN' : lang.translate('login')),
+                        ),
+                      ),
+                      if (_canCheckBiometrics && _biometricEnabled) ...[
+                        const SizedBox(height: 16),
+                        IconButton(
+                          onPressed: _authenticateWithBiometrics,
+                          icon: const Icon(Icons.fingerprint, size: 48),
+                          color: Theme.of(context).colorScheme.primary,
+                          tooltip: lang.translate('biometric_login'),
+                        ),
+                      ],
+                    ],
+                    
+                    const SizedBox(height: 24),
+
+                    // Hidden Developer Button
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => _isAdminMode = !_isAdminMode);
+                      },
+                      child: Text(
+                        'developer',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

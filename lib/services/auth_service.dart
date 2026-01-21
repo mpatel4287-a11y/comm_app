@@ -5,6 +5,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/login_response.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'session_manager.dart';
 
 class AuthService {
@@ -108,6 +109,16 @@ class AuthService {
         subFamilyDocId: memberData['subFamilyDocId'] ?? '',
         memberDocId: memberDoc.id,
       );
+
+      // --- NEW: Save FCM Token ---
+      try {
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) {
+          await memberDoc.reference.update({'fcmToken': fcmToken});
+        }
+      } catch (e) {
+        // Silently fail or log to a proper service
+      }
 
       return LoginResponse(
         success: true,

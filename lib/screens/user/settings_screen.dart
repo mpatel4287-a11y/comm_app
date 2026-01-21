@@ -5,6 +5,9 @@
 import 'package:flutter/material.dart';
 import '../../services/session_manager.dart';
 import '../../services/auth_service.dart';
+import '../../services/language_service.dart';
+import '../../services/theme_service.dart';
+import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -15,7 +18,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
   String? _familyName;
   String? _familyId;
   String? _role;
@@ -40,16 +42,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageService>(context);
+    final theme = Provider.of<ThemeService>(context);
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(lang.translate('settings')),
         backgroundColor: Colors.blue.shade900,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // Profile Section
-          _buildSectionHeader('Profile'),
+          _buildSectionHeader(lang.translate('profile')),
           Card(
             child: ListTile(
               leading: const CircleAvatar(
@@ -69,13 +74,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // Preferences Section
-          _buildSectionHeader('Preferences'),
+          _buildSectionHeader(lang.translate('preferences')),
           Card(
             child: Column(
               children: [
                 SwitchListTile(
-                  title: const Text('Notifications'),
-                  subtitle: const Text('Receive push notifications'),
+                  title: Text(lang.translate('notifications')),
+                  subtitle: Text(lang.translate('receive_notifications')),
                   value: _notificationsEnabled,
                   onChanged: (value) {
                     setState(() => _notificationsEnabled = value);
@@ -83,11 +88,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(),
                 SwitchListTile(
-                  title: const Text('Dark Mode'),
-                  subtitle: const Text('Use dark theme'),
-                  value: _darkModeEnabled,
+                  title: Text(lang.translate('dark_mode')),
+                  subtitle: Text(lang.translate('use_dark_theme')),
+                  value: theme.isDarkMode,
                   onChanged: (value) {
-                    setState(() => _darkModeEnabled = value);
+                    theme.toggleTheme();
                   },
                 ),
               ],
@@ -95,14 +100,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
+          // Language Section
+          _buildSectionHeader(lang.translate('language')),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  title: const Text('English'),
+                  trailing: lang.currentLanguage == 'en' ? const Icon(Icons.check, color: Colors.green) : null,
+                  onTap: () => lang.setLanguage('en'),
+                ),
+                const Divider(),
+                ListTile(
+                  title: const Text('ગુજરાતી (Gujarati)'),
+                  trailing: lang.currentLanguage == 'gu' ? const Icon(Icons.check, color: Colors.green) : null,
+                  onTap: () => lang.setLanguage('gu'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
           // Family Section
-          _buildSectionHeader('Family'),
+          _buildSectionHeader(lang.translate('family')),
           Card(
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.people),
-                  title: const Text('View Family Members'),
+                  title: Text(lang.translate('view_family_members')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.pushNamed(context, '/familyMembers');
@@ -110,11 +136,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(),
                 ListTile(
-                  leading: const Icon(Icons.qr_code),
-                  title: const Text('Share Family QR'),
+                  leading: const Icon(Icons.badge_rounded),
+                  title: Text(lang.translate('digital_id')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    Navigator.pushNamed(context, '/qrShare');
+                    // Logic to open self digital ID
                   },
                 ),
               ],
@@ -123,13 +149,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // Support Section
-          _buildSectionHeader('Support'),
+          _buildSectionHeader(lang.translate('support')),
           Card(
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.help),
-                  title: const Text('Help & FAQ'),
+                  title: Text(lang.translate('help_faq')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     // Open help
@@ -138,13 +164,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.info),
-                  title: const Text('About'),
-                  subtitle: const Text('Community App v1.0'),
+                  title: Text(lang.translate('about')),
+                  subtitle: const Text('Community App v1.2'),
                   onTap: () {
                     showAboutDialog(
                       context: context,
                       applicationName: 'Community App',
-                      applicationVersion: '1.0.0',
+                      applicationVersion: '1.2.0',
                     );
                   },
                 ),
@@ -156,12 +182,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Logout Button
           ElevatedButton.icon(
             icon: const Icon(Icons.logout),
-            label: const Text('Logout'),
+            label: Text(lang.translate('logout')),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            onPressed: () => _showLogoutDialog(),
+            onPressed: () => _showLogoutDialog(lang),
           ),
           const SizedBox(height: 16),
 
@@ -191,21 +217,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _showLogoutDialog() async {
+  Future<void> _showLogoutDialog(LanguageService lang) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text(lang.translate('logout')),
+        content: Text(lang.translate('confirm_logout')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(lang.translate('cancel')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout'),
+            child: Text(lang.translate('logout')),
           ),
         ],
       ),

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/family_service.dart';
 import 'add_family_screen.dart';
-import 'edit_family_screen.dart';
 import 'subfamily_list_screen.dart';
 
 class FamilyListScreen extends StatelessWidget {
@@ -149,23 +148,6 @@ class FamilyListScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            // EDIT
-                            _buildCompactAction(
-                              icon: Icons.edit,
-                              color: Colors.blue,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => EditFamilyScreen(
-                                      docId: doc.id,
-                                      data: data,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-
                             // BLOCK / UNBLOCK
                             _buildCompactAction(
                               icon: isBlocked ? Icons.lock_open : Icons.block,

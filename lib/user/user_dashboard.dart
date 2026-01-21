@@ -5,7 +5,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/session_manager.dart';
 import '../models/member_model.dart';
 import '../screens/user/member_detail_screen.dart';
+import '../screens/user/qr_scanner_screen.dart';
 import '../services/theme_service.dart';
+import '../services/language_service.dart';
 import 'package:provider/provider.dart';
 
 class UserDashboard extends StatefulWidget {
@@ -20,6 +22,7 @@ class _UserDashboardState extends State<UserDashboard> {
   String _familyName = '';
   String _familyDocId = '';
   int _memberCount = 0;
+  MemberModel? _member;
 
   @override
   void initState() {
@@ -32,17 +35,35 @@ class _UserDashboardState extends State<UserDashboard> {
       final familyDocId = await SessionManager.getFamilyDocId() ?? '';
       final familyName = await SessionManager.getFamilyName() ?? '';
 
-      // Get member count
       final snapshot = await FirebaseFirestore.instance
           .collectionGroup('members')
           .where('familyDocId', isEqualTo: familyDocId)
           .count()
           .get();
 
+      // Fetch current member details
+      final memberDocId = await SessionManager.getMemberDocId();
+      final subFamilyDocId = await SessionManager.getSubFamilyDocId();
+      MemberModel? member;
+      if (memberDocId != null) {
+        final memberDoc = await FirebaseFirestore.instance
+            .collection('families')
+            .doc(familyDocId)
+            .collection('subfamilies')
+            .doc(subFamilyDocId ?? '')
+            .collection('members')
+            .doc(memberDocId)
+            .get();
+        if (memberDoc.exists) {
+          member = MemberModel.fromMap(memberDoc.id, memberDoc.data()!);
+        }
+      }
+
       setState(() {
         _familyDocId = familyDocId;
         _familyName = familyName;
         _memberCount = snapshot.count ?? 0;
+        _member = member;
         _loading = false;
       });
     } catch (e) {
@@ -59,19 +80,20 @@ class _UserDashboardState extends State<UserDashboard> {
   }
 
   Future<void> _logout(BuildContext context) async {
+    final lang = Provider.of<LanguageService>(context, listen: false);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: Text(lang.translate('logout')),
+        content: Text(lang.translate('confirm_logout')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(lang.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout'),
+            child: Text(lang.translate('logout')),
           ),
         ],
       ),
@@ -85,19 +107,32 @@ class _UserDashboardState extends State<UserDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageService>(context);
+
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final themeService = Provider.of<ThemeService>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('User Dashboard'),
+        title: Text(lang.translate('user_dashboard')),
         actions: [
           IconButton(
             icon: Icon(themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode),
             onPressed: () => themeService.toggleTheme(),
+          ),
+          // Language switcher
+          TextButton(
+            onPressed: () {
+              final newLang = lang.currentLanguage == 'en' ? 'gu' : 'en';
+              lang.setLanguage(newLang);
+            },
+            child: Text(
+              lang.currentLanguage == 'en' ? 'GUJ' : 'ENG',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.settings),
@@ -134,7 +169,7 @@ class _UserDashboardState extends State<UserDashboard> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Family Members: $_memberCount',
+                      '${lang.translate('family_members')}: $_memberCount',
                       style: const TextStyle(color: Colors.white70),
                     ),
                   ],
@@ -144,9 +179,9 @@ class _UserDashboardState extends State<UserDashboard> {
             const SizedBox(height: 20),
 
             // Quick Actions
-            const Text(
-              'Quick Actions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              lang.translate('quick_actions'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Row(
@@ -154,7 +189,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 Expanded(
                   child: _buildQuickAction(
                     icon: Icons.people,
-                    label: 'View Members',
+                    label: lang.translate('view_members'),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -169,21 +204,52 @@ class _UserDashboardState extends State<UserDashboard> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildQuickAction(
-                    icon: Icons.qr_code,
-                    label: 'Share Profile',
+                    icon: Icons.badge_rounded,
+                    label: lang.translate('digital_id'),
                     onTap: () {
-                      Navigator.pushNamed(context, '/user/qr-share');
+                      if (_member != null) {
+                        Navigator.pushNamed(
+                          context,
+                          '/user/digital-id',
+                          arguments: _member,
+                        );
+                      } else {
+                         ScaffoldMessenger.of(context).showSnackBar(
+                           SnackBar(content: Text(lang.translate('member_not_found')))
+                         );
+                      }
                     },
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildQuickAction(
+                    icon: Icons.qr_code_scanner,
+                    label: lang.translate('scan_qr'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const QRScannerScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: SizedBox()), // Empty space for symmetry
+              ],
+            ),
             const SizedBox(height: 20),
 
             // Upcoming Events
-            const Text(
-              'Upcoming Events',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              lang.translate('upcoming_events'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             StreamBuilder<QuerySnapshot>(
@@ -200,7 +266,7 @@ class _UserDashboardState extends State<UserDashboard> {
                       padding: const EdgeInsets.all(16),
                       child: Center(
                         child: Text(
-                          'No upcoming events',
+                          lang.translate('no_events'),
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                       ),
@@ -263,8 +329,9 @@ class UserMemberListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageService>(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Family Members')),
+      appBar: AppBar(title: Text(lang.translate('family_members'))),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collectionGroup('members')
@@ -277,7 +344,7 @@ class UserMemberListScreen extends StatelessWidget {
           }
 
           if (snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No members found'));
+            return Center(child: Text(lang.translate('no_members_found')));
           }
 
           return ListView.builder(

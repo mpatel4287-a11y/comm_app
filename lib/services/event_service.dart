@@ -2,6 +2,8 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/event_model.dart';
+import 'notification_service.dart';
+import 'fcm_service.dart';
 
 class EventService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -31,7 +33,49 @@ class EventService {
     );
 
     await eventRef.set(event.toMap());
+
+    // NEW: Auto-create notification for everyone
+    await NotificationService().createNotification(
+      title: 'New Event: ${event.title}',
+      message: 'A new event has been scheduled for ${_formatDate(event.date)}',
+      type: 'event',
+      targetType: 'all',
+      targetId: event.id,
+      createdBy: createdBy,
+    );
+
+    // NEW: Trigger Push Notification for everyone
+    await FcmService.sendPushToTopic(
+      title: 'New Event: ${event.title}',
+      body: 'A new event has been scheduled for ${_formatDate(event.date)}',
+      topic: 'all',
+    );
   }
+
+  // ---------------- SEND REMINDER ----------------
+  Future<void> sendEventReminder({
+    required EventModel event,
+    required String triggeredBy,
+  }) async {
+    await NotificationService().createNotification(
+      title: 'Reminder: ${event.title}',
+      message: 'Don\'t forget! ${event.title} is happening on ${_formatDate(event.date)} at ${_formatTime(event.date)}.',
+      type: 'event',
+      targetType: 'all',
+      targetId: event.id,
+      createdBy: triggeredBy,
+    );
+
+    // NEW: Trigger Push Notification for everyone
+    await FcmService.sendPushToTopic(
+      title: 'Reminder: ${event.title}',
+      body: 'Don\'t forget! ${event.title} is happening on ${_formatDate(event.date)}',
+      topic: 'all',
+    );
+  }
+
+  String _formatDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
+  String _formatTime(DateTime date) => '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
   // ---------------- UPDATE EVENT ----------------
   Future<void> updateEvent({

@@ -1,9 +1,11 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'member_list_screen.dart';
 import '../../services/auth_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/theme_service.dart';
+import '../../services/language_service.dart';
 import 'package:provider/provider.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -28,19 +30,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Future<void> _logout(BuildContext context) async {
+    final lang = Provider.of<LanguageService>(context, listen: false);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure?'),
+        title: Text(lang.translate('logout')),
+        content: Text(lang.translate('confirm_logout')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(lang.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout'),
+            child: Text(lang.translate('logout')),
           ),
         ],
       ),
@@ -55,16 +58,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     final isManager = _role == 'manager';
-
     final themeService = Provider.of<ThemeService>(context);
+    final lang = Provider.of<LanguageService>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isManager ? 'Manager Portal' : 'Admin Dashboard'),
+        title: Text(isManager ? lang.translate('manager_portal') : lang.translate('admin_dashboard')),
         actions: [
           IconButton(
             icon: Icon(themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode),
             onPressed: () => themeService.toggleTheme(),
+          ),
+          // Language Switcher in App Bar for quick access
+          TextButton(
+            onPressed: () {
+              final newLang = lang.currentLanguage == 'en' ? 'gu' : 'en';
+              lang.setLanguage(newLang);
+            },
+            child: Text(
+              lang.currentLanguage == 'en' ? 'GUJ' : 'ENG',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -77,14 +91,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildSectionTitle('Family & Members'),
+            _buildSectionTitle(lang.translate('family_members')),
             const SizedBox(height: 12),
             if (!isManager)
               _buildDashboardCard(
                 context,
                 icon: Icons.family_restroom,
-                title: 'Families',
-                subtitle: 'Manage family records',
+                title: lang.translate('families'),
+                subtitle: lang.translate('manage_families'),
                 color: Colors.blue,
                 onTap: () => Navigator.pushNamed(context, '/admin/families'),
               ),
@@ -92,19 +106,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _buildDashboardCard(
               context,
               icon: Icons.people,
-              title: 'Members',
-              subtitle: 'Manage member records',
+              title: lang.translate('members'),
+              subtitle: lang.translate('manage_members'),
               color: Colors.green,
-              onTap: () => Navigator.pushNamed(context, '/admin/families'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MemberListScreen(
+                    isGlobal: true,
+                    showOnlyManagers: false,
+                    familyName: lang.translate('all_members'),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildDashboardCard(
+              context,
+              icon: Icons.admin_panel_settings,
+              title: lang.translate('managers'),
+              subtitle: lang.translate('manage_managers'),
+              color: Colors.orange,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MemberListScreen(
+                    isGlobal: true,
+                    showOnlyManagers: true,
+                    familyName: lang.translate('managers'),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
-            _buildSectionTitle('Organization'),
+            _buildSectionTitle(lang.translate('organization')),
             const SizedBox(height: 12),
             _buildDashboardCard(
               context,
               icon: Icons.groups,
-              title: 'Groups',
-              subtitle: 'Manage yuvak, mahila, sanskar groups',
+              title: lang.translate('groups'),
+              subtitle: lang.translate('manage_groups_subtitle'),
               color: Colors.purple,
               onTap: () => Navigator.pushNamed(context, '/admin/groups'),
             ),
@@ -112,32 +153,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _buildDashboardCard(
               context,
               icon: Icons.event,
-              title: 'Events',
-              subtitle: 'Manage events and activities',
-              color: Colors.orange,
+              title: lang.translate('events'),
+              subtitle: lang.translate('manage_events_subtitle'),
+              color: Colors.blueAccent,
               onTap: () => Navigator.pushNamed(context, '/admin/events'),
+            ),
+            const SizedBox(height: 12),
+            _buildDashboardCard(
+              context,
+              icon: Icons.notifications_active,
+              title: lang.translate('notification_center'),
+              subtitle: lang.translate('send_custom_messages'),
+              color: Colors.redAccent,
+              onTap: () => Navigator.pushNamed(context, '/admin/notifications'),
             ),
             
             if (!isManager) ...[
               const SizedBox(height: 24),
-              _buildSectionTitle('Insights'),
+              _buildSectionTitle(lang.translate('insights')),
               const SizedBox(height: 12),
               _buildDashboardCard(
                 context,
                 icon: Icons.analytics,
-                title: 'Analytics',
-                subtitle: 'View statistics and reports',
+                title: lang.translate('analytics'),
+                subtitle: lang.translate('view_stats'),
                 color: Colors.teal,
                 onTap: () => Navigator.pushNamed(context, '/admin/analytics'),
-              ),
-              const SizedBox(height: 12),
-              _buildDashboardCard(
-                context,
-                icon: Icons.health_and_safety,
-                title: 'System Health',
-                subtitle: 'Monitor system status',
-                color: Colors.red,
-                onTap: () => Navigator.pushNamed(context, '/admin/system-health'),
               ),
             ],
           ],

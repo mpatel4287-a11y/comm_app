@@ -9,6 +9,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/member_model.dart';
 import '../../services/imagekit_config.dart';
+import 'package:provider/provider.dart';
+import '../../services/language_service.dart';
 import '../../services/member_service.dart';
 import '../../services/photo_service.dart';
 import '../user/member_detail_screen.dart';
@@ -235,11 +237,12 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageService>(context);
     return Stack(
       children: [
         Scaffold(
           appBar: AppBar(
-            title: const Text('Add Member'),
+            title: Text(lang.translate('add_member')),
             backgroundColor: Colors.blue.shade900,
           ),
           body: Form(
@@ -277,9 +280,9 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Tap to add profile photo',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        Text(
+                          lang.translate('tap_to_add_photo'),
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
                     ),
@@ -287,53 +290,53 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   const SizedBox(height: 20),
 
                   // Personal Info
-                  const Text(
-                    'Personal Information',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Text(
+                    lang.translate('personal_information'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _fullNameCtrl,
-                    decoration: const InputDecoration(labelText: 'Full Name *'),
+                    decoration: InputDecoration(labelText: '${lang.translate('full_name')} *'),
                     validator: (v) =>
-                        v == null || v.isEmpty ? 'Required' : null,
+                        v == null || v.isEmpty ? lang.translate('required') : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _surnameCtrl,
-                    decoration: const InputDecoration(labelText: 'Surname'),
+                    decoration: InputDecoration(labelText: lang.translate('surname')),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _fatherNameCtrl,
-                    decoration: const InputDecoration(labelText: 'Father Name'),
+                    decoration: InputDecoration(labelText: lang.translate('father_name')),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _motherNameCtrl,
-                    decoration: const InputDecoration(labelText: 'Mother Name'),
+                    decoration: InputDecoration(labelText: lang.translate('mother_name')),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _gotraCtrl,
-                    decoration: const InputDecoration(labelText: 'Gotra'),
+                    decoration: InputDecoration(labelText: lang.translate('gotra')),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _passwordCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Member Login Password *',
-                      prefixIcon: Icon(Icons.lock),
+                    decoration: InputDecoration(
+                      labelText: '${lang.translate('member_login_password')} *',
+                      prefixIcon: const Icon(Icons.lock),
                     ),
                     obscureText: true,
                     validator: (v) => (v == null || v.length != 8 || !RegExp(r'^[a-zA-Z0-9]+$').hasMatch(v)) 
-                      ? 'Must be exactly 8 alphanumeric characters' : null,
+                      ? lang.translate('must_be_8_chars') : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _educationCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Education',
+                    decoration: InputDecoration(
+                      labelText: lang.translate('education'),
                       hintText: 'e.g., B.Tech, MBA',
                     ),
                   ),
@@ -382,14 +385,14 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
                   // Contact Info
                   const SizedBox(height: 20),
-                  const Text(
-                    'Contact Information',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Text(
+                    lang.translate('contact_information'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _phoneCtrl,
-                    decoration: const InputDecoration(labelText: 'Phone *'),
+                    decoration: InputDecoration(labelText: '${lang.translate('phone')} *'),
                     keyboardType: TextInputType.phone,
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Required' : null,
@@ -397,39 +400,39 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _addressCtrl,
-                    decoration: const InputDecoration(labelText: 'Address'),
+                    decoration: InputDecoration(labelText: lang.translate('address')),
                     maxLines: 2,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _googleMapLinkCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Google Map Link',
+                    decoration: InputDecoration(
+                      labelText: lang.translate('google_map_link'),
                       hintText: 'https://maps.google.com/...',
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _whatsappCtrl,
-                    decoration: const InputDecoration(labelText: 'WhatsApp'),
+                    decoration: InputDecoration(labelText: lang.translate('whatsapp')),
                     keyboardType: TextInputType.phone,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _instagramCtrl,
-                    decoration: const InputDecoration(labelText: 'Instagram'),
+                    decoration: InputDecoration(labelText: lang.translate('instagram')),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _facebookCtrl,
-                    decoration: const InputDecoration(labelText: 'Facebook'),
+                    decoration: InputDecoration(labelText: lang.translate('facebook')),
                   ),
 
                   // Firms/Business Details
                   const SizedBox(height: 20),
-                  const Text(
-                    'Firms / Business Details',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Text(
+                    lang.translate('firms_business'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   ..._firms.asMap().entries.map((entry) {
@@ -449,8 +452,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                               Expanded(
                                 child: TextFormField(
                                   initialValue: firm['name'],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Firm Name',
+                                  decoration: InputDecoration(
+                                    labelText: lang.translate('firm_name'),
                                     border: InputBorder.none,
                                   ),
                                   onChanged: (value) {
@@ -502,44 +505,44 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                       });
                     },
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Firm'),
+                    label: Text(lang.translate('add_firm')),
                   ),
 
                   // Family Information
                   const SizedBox(height: 20),
-                  const Text(
-                    'Family Information',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Text(
+                    lang.translate('family_information'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _dktFamilyIdCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'DKT Family ID',
+                    decoration: InputDecoration(
+                      labelText: lang.translate('dkt_family_id'),
                       hintText: 'Enter DKT Family ID',
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _parentMidCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Parent Member ID',
+                    decoration: InputDecoration(
+                      labelText: lang.translate('parent_member_id'),
                       hintText: 'Enter parent MID (optional)',
                     ),
                   ),
 
                   // Tags (Admin Only)
                   const SizedBox(height: 20),
-                  const Text(
-                    'Tags',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Text(
+                    lang.translate('tags'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   // Visible tag input field
                   TextFormField(
                     controller: _tagsCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Add Tag (max 15 chars)',
+                    decoration: InputDecoration(
+                      labelText: lang.translate('add_tag'),
                       hintText: 'Enter tag and press + button',
                     ),
                     maxLength: 15,
@@ -580,7 +583,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _submitForm,
-                    child: const Text('Add Member'),
+                    child: Text(lang.translate('add_member')),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -774,8 +777,10 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final lang = Provider.of<LanguageService>(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Member')),
+      appBar: AppBar(title: Text(lang.translate('edit_member'))),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -1302,15 +1307,19 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 }
 
 class MemberListScreen extends StatefulWidget {
-  final String familyDocId;
+  final String? familyDocId;
   final String familyName;
-  final String? subFamilyDocId; // NEW: Optional sub-family ID
+  final String? subFamilyDocId;
+  final bool isGlobal;
+  final bool showOnlyManagers;
 
   const MemberListScreen({
     super.key,
-    required this.familyDocId,
-    required this.familyName,
+    this.familyDocId,
+    this.familyName = 'Members',
     this.subFamilyDocId,
+    this.isGlobal = false,
+    this.showOnlyManagers = false,
   });
 
   @override
@@ -1328,21 +1337,34 @@ class _MemberListScreenState extends State<MemberListScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Use sub-family stream if subFamilyDocId is provided, otherwise use old family stream
-    if (widget.subFamilyDocId != null) {
+    // Debug logging
+    print('MemberListScreen initialized:');
+    print('  isGlobal: ${widget.isGlobal}');
+    print('  familyDocId: ${widget.familyDocId}');
+    print('  subFamilyDocId: ${widget.subFamilyDocId}');
+    print('  familyName: ${widget.familyName}');
+
+    if (widget.isGlobal) {
+      _membersStream = FirebaseFirestore.instance
+          .collectionGroup('members')
+          .orderBy('createdAt', descending: true)
+          .snapshots();
+    } else {
+      // Ensure we have required IDs for subfamily query
+      if (widget.familyDocId == null || widget.subFamilyDocId == null) {
+        print('ERROR: Missing required IDs for subfamily query');
+        print('  familyDocId: ${widget.familyDocId}');
+        print('  subFamilyDocId: ${widget.subFamilyDocId}');
+      }
+      
+      final path = 'families/${widget.familyDocId}/subfamilies/${widget.subFamilyDocId}/members';
+      print('  Query path: $path');
+      
       _membersStream = FirebaseFirestore.instance
           .collection('families')
           .doc(widget.familyDocId)
           .collection('subfamilies')
           .doc(widget.subFamilyDocId)
-          .collection('members')
-          .orderBy('createdAt', descending: true)
-          .snapshots();
-    } else {
-      // Fallback to old structure for backward compatibility
-      _membersStream = FirebaseFirestore.instance
-          .collection('families')
-          .doc(widget.familyDocId)
           .collection('members')
           .orderBy('createdAt', descending: true)
           .snapshots();
@@ -1360,19 +1382,17 @@ class _MemberListScreenState extends State<MemberListScreen>
     if (state == AppLifecycleState.resumed) {
       // Refresh the stream when app resumes
       setState(() {
-        if (widget.subFamilyDocId != null) {
+        if (widget.isGlobal) {
           _membersStream = FirebaseFirestore.instance
-              .collection('families')
-              .doc(widget.familyDocId)
-              .collection('subfamilies')
-              .doc(widget.subFamilyDocId)
-              .collection('members')
+              .collectionGroup('members')
               .orderBy('createdAt', descending: true)
               .snapshots();
         } else {
           _membersStream = FirebaseFirestore.instance
               .collection('families')
               .doc(widget.familyDocId)
+              .collection('subfamilies')
+              .doc(widget.subFamilyDocId)
               .collection('members')
               .orderBy('createdAt', descending: true)
               .snapshots();
@@ -1420,26 +1440,28 @@ class _MemberListScreenState extends State<MemberListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageService>(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.familyName),
+        title: Text(widget.showOnlyManagers ? lang.translate('managers') : widget.familyName),
         backgroundColor: Colors.blue.shade900,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddMemberScreen(
-                    familyDocId: widget.familyDocId,
-                    familyName: widget.familyName,
-                    subFamilyDocId: widget.subFamilyDocId,
+          if (!widget.isGlobal)
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddMemberScreen(
+                      familyDocId: widget.familyDocId!,
+                      familyName: widget.familyName,
+                      subFamilyDocId: widget.subFamilyDocId,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
         ],
       ),
       body: Column(
@@ -1447,13 +1469,13 @@ class _MemberListScreenState extends State<MemberListScreen>
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: TextField(
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Search members...',
-                border: OutlineInputBorder(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: widget.showOnlyManagers ? lang.translate('search_managers_hint') : lang.translate('search_members_hint'),
+                border: const OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(12)),
                 ),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
@@ -1513,14 +1535,24 @@ class _MemberListScreenState extends State<MemberListScreen>
                 }
 
                 if (snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('No members found'));
+                  return Center(child: Text(lang.translate('no_members_found')));
                 }
 
                 final members = snapshot.data!.docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
+                  final role = data['role'] ?? 'member';
+                  
+                  // Role Filter
+                  if (widget.showOnlyManagers && role != 'manager') return false;
+                  if (!widget.showOnlyManagers && widget.isGlobal && role == 'manager') return false;
+
                   final fullName = (data['fullName'] ?? '').toLowerCase();
+                  final mid = (data['mid'] ?? '').toLowerCase();
                   final searchLower = _searchQuery.toLowerCase();
-                  final matchesSearch = fullName.contains(searchLower);
+                  
+                  // Search by Name or MID
+                  final matchesSearch = fullName.contains(searchLower) || mid.contains(searchLower);
+                  
                   final tags = List<String>.from(data['tags'] ?? []);
                   final matchesTag =
                       _selectedTag.isEmpty || tags.contains(_selectedTag);
@@ -1549,13 +1581,27 @@ class _MemberListScreenState extends State<MemberListScreen>
 
                     return InkWell(
                       onTap: () {
+                        // Determine family IDs robustly from record data or path
+                        String famId = data['familyDocId'] ?? '';
+                        String subFamId = data['subFamilyDocId'] ?? '';
+                        
+                        // Fallback to parsing from path if missing (legacy records)
+                        if (famId.isEmpty || subFamId.isEmpty) {
+                          final pathParts = doc.reference.path.split('/');
+                          // families/{famId}/subfamilies/{subfamId}/members/{memId}
+                          if (pathParts.length >= 4) {
+                            famId = pathParts[1];
+                            subFamId = pathParts[3];
+                          }
+                        }
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => MemberDetailScreen(
                               memberId: doc.id,
-                              familyDocId: widget.familyDocId,
-                              subFamilyDocId: widget.subFamilyDocId,
+                              familyDocId: famId,
+                              subFamilyDocId: subFamId,
                             ),
                           ),
                         );
@@ -1655,8 +1701,8 @@ class _MemberListScreenState extends State<MemberListScreen>
                                         MaterialPageRoute(
                                           builder: (_) => EditMemberScreen(
                                             memberId: doc.id,
-                                            familyDocId: widget.familyDocId,
-                                            subFamilyDocId: widget.subFamilyDocId,
+                                            familyDocId: widget.familyDocId ?? data['familyDocId'],
+                                            subFamilyDocId: widget.subFamilyDocId ?? data['subFamilyDocId'],
                                           ),
                                         ),
                                       );
@@ -1694,9 +1740,9 @@ class _MemberListScreenState extends State<MemberListScreen>
                                       );
                                       if (confirm == true) {
                                         await MemberService().deleteMember(
-                                          mainFamilyDocId: widget.familyDocId,
+                                          mainFamilyDocId: widget.familyDocId ?? data['familyDocId'] ?? '',
                                           subFamilyDocId:
-                                              widget.subFamilyDocId ?? '',
+                                              widget.subFamilyDocId ?? data['subFamilyDocId'] ?? '',
                                           memberId: doc.id,
                                         );
                                       }
@@ -1716,23 +1762,25 @@ class _MemberListScreenState extends State<MemberListScreen>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white,
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AddMemberScreen(
-                familyDocId: widget.familyDocId,
-                familyName: widget.familyName,
-                subFamilyDocId: widget.subFamilyDocId,
-              ),
+      floatingActionButton: widget.isGlobal
+          ? null
+          : FloatingActionButton(
+              backgroundColor: Colors.blue.shade900,
+              foregroundColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddMemberScreen(
+                      familyDocId: widget.familyDocId!,
+                      familyName: widget.familyName,
+                      subFamilyDocId: widget.subFamilyDocId,
+                    ),
+                  ),
+                );
+              },
+              child: const Icon(Icons.add),
             ),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }
