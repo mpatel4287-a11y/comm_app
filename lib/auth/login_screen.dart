@@ -18,10 +18,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _auth = AuthService();
   final _biometricService = BiometricService();
   final _passwordCtrl = TextEditingController();
-  
+
   bool _canCheckBiometrics = false;
   bool _biometricEnabled = false;
-  
+
   // MID Parts
   final _midFamilyCtrl = TextEditingController();
   final _midSubFamilyCtrl = TextEditingController();
@@ -37,7 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _checkExistingSession();
     _checkBiometrics();
   }
 
@@ -48,22 +47,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _canCheckBiometrics = isAvailable;
       _biometricEnabled = isEnabled;
     });
-  }
-
-  Future<void> _checkExistingSession() async {
-    final hasSession = await SessionManager.hasSession();
-    if (hasSession) {
-      final isAdmin = await SessionManager.getIsAdmin();
-      final role = await SessionManager.getRole();
-      if (mounted) {
-        // Redirect based on role/admin status
-        if (isAdmin == true || role == 'manager') {
-          Navigator.pushReplacementNamed(context, '/admin');
-        } else {
-          Navigator.pushReplacementNamed(context, '/home');
-        }
-      }
-    }
   }
 
   Future<void> _login() async {
@@ -101,11 +84,11 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _error = res.message);
         return;
       }
-      
+
       if (res.success) {
         // Save credentials for biometrics if successful
         await SessionManager.saveCredentials(loginId, _passwordCtrl.text);
-        
+
         // Navigate based on role/admin status
         if (res.isAdmin || res.role == 'manager') {
           Navigator.pushReplacementNamed(context, '/admin');
@@ -129,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
           loginId: creds['loginId']!,
           password: creds['password']!,
         );
-        
+
         if (mounted) {
           setState(() => _loading = false);
           if (res.success) {
@@ -143,7 +126,10 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
       } else {
-        setState(() => _error = 'No saved credentials found. Please login once with password.');
+        setState(
+          () => _error =
+              'No saved credentials found. Please login once with password.',
+        );
       }
     }
   }
@@ -168,7 +154,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 icon: const Icon(Icons.language),
                 label: Text(lang.currentLanguage == 'en' ? 'GUJ' : 'ENG'),
                 style: TextButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
                 ),
               ),
             ),
@@ -179,10 +167,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Logo or Icon
-                    Icon(Icons.lock_person_rounded, size: 80, color: Theme.of(context).colorScheme.primary),
+                    Icon(
+                      Icons.lock_person_rounded,
+                      size: 80,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     const SizedBox(height: 24),
                     Text(
-                      _isAdminMode ? 'Admin Portal' : lang.translate('welcome_back'),
+                      _isAdminMode
+                          ? 'Admin Portal'
+                          : lang.translate('welcome_back'),
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -193,7 +187,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     if (!_isAdminMode) ...[
                       // MID INPUT (F-XXX-SXX-XXX)
-                      Text(lang.translate('username'), style: const TextStyle(fontWeight: FontWeight.w500)),
+                      Text(
+                        lang.translate('username'),
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
                       const SizedBox(height: 12),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
@@ -216,13 +213,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           labelText: 'Admin Login ID (ADM-XXXXXXX)',
                           prefixIcon: const Icon(Icons.admin_panel_settings),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ],
 
                     const SizedBox(height: 16),
-                    
+
                     // PASSWORD INPUT
                     TextField(
                       controller: _passwordCtrl,
@@ -230,7 +229,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: InputDecoration(
                         labelText: lang.translate('password'),
                         prefixIcon: const Icon(Icons.key_rounded),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
 
@@ -239,7 +240,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         padding: const EdgeInsets.only(top: 16),
                         child: Text(
                           _error!,
-                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -254,12 +258,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 50,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           onPressed: _login,
-                          child: Text(_isAdminMode ? 'CONTINUE AS ADMIN' : lang.translate('login')),
+                          child: Text(
+                            _isAdminMode
+                                ? 'CONTINUE AS ADMIN'
+                                : lang.translate('login'),
+                          ),
                         ),
                       ),
                       if (_canCheckBiometrics && _biometricEnabled) ...[
@@ -272,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ],
-                    
+
                     const SizedBox(height: 24),
 
                     // Hidden Developer Button
@@ -328,8 +340,19 @@ class _LoginScreenState extends State<LoginScreen> {
           hintText: hint,
           counterText: '',
           contentPadding: const EdgeInsets.symmetric(vertical: 8),
-          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))),
-          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2,
+            ),
+          ),
         ),
         onChanged: (v) {
           if (v.length == length) {

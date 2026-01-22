@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher icon background - transparent for circular icon -->
+    <color name="ic_launcher_background">#00000000</color>
+    
+    <!-- Splash screen background color - Saffron orange -->
+    <color name="splash_background">#FF9933</color>
+</resources>
+

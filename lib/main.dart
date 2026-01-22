@@ -37,13 +37,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
+
   // Enable offline persistence
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
   );
-  
+
   final themeService = ThemeService();
   await themeService.initialize();
 
@@ -52,7 +52,7 @@ Future<void> main() async {
 
   // Initialize FCM (non-blocking - don't let it prevent app startup)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  
+
   // Initialize FCM in the background without blocking app startup
   FcmService.initialize().catchError((error) {
     // Silently handle FCM initialization errors
@@ -70,6 +70,46 @@ Future<void> main() async {
   );
 }
 
+/// Initial routing widget that checks session and redirects to appropriate screen
+class InitialRoute extends StatefulWidget {
+  const InitialRoute({super.key});
+
+  @override
+  State<InitialRoute> createState() => _InitialRouteState();
+}
+
+class _InitialRouteState extends State<InitialRoute> {
+  @override
+  void initState() {
+    super.initState();
+    _checkSessionAndNavigate();
+  }
+
+  Future<void> _checkSessionAndNavigate() async {
+    // Check for existing session
+    final hasSession = await SessionManager.hasSession();
+    final isAdmin = await SessionManager.getIsAdmin();
+    final role = await SessionManager.getRole();
+
+    if (mounted) {
+      // Navigate based on role/admin status
+      if (hasSession && (isAdmin == true || role == 'manager')) {
+        Navigator.pushReplacementNamed(context, '/admin');
+      } else if (hasSession) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show a minimal loading screen while checking session
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -80,20 +120,17 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Community App',
+      title: 'Ramanagara Patidar Samaj',
       theme: themeService.getTheme(),
       locale: languageService.locale,
-      supportedLocales: const [
-        Locale('en'),
-        Locale('gu'),
-      ],
+      supportedLocales: const [Locale('en'), Locale('gu')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      // Always start from login - the login screen will check session and redirect
-      home: const LoginScreen(),
+      // Start with initial route - it will check session and redirect
+      home: const InitialRoute(),
       routes: {
         '/login': (_) => const LoginScreen(),
         '/admin': (_) => const AdminDashboard(),
@@ -105,7 +142,8 @@ class MyApp extends StatelessWidget {
         '/admin/notifications': (_) => const NotificationCenterScreen(),
         '/home': (_) => const UserDashboard(),
         '/user/settings': (_) => const SettingsScreen(),
-        '/user/member-detail': (_) => const MemberDetailScreen(memberId: '', familyDocId: null),
+        '/user/member-detail': (_) =>
+            const MemberDetailScreen(memberId: '', familyDocId: null),
       },
       onGenerateRoute: (settings) {
         // Handle admin members route with arguments
@@ -124,7 +162,8 @@ class MyApp extends StatelessWidget {
             builder: (_) => MemberListScreen(
               familyDocId: args['familyDocId'],
               familyName: args['familyName'],
-              subFamilyDocId: args['subFamilyDocId'], // NEW: Pass subFamilyDocId
+              subFamilyDocId:
+                  args['subFamilyDocId'], // NEW: Pass subFamilyDocId
             ),
           );
         }

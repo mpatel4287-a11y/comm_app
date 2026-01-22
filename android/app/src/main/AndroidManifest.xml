@@ -37,7 +37,7 @@
     </queries>
 
     <application
-        android:label="comm_app"
+        android:label="Ramanagara Patidar Samaj"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
