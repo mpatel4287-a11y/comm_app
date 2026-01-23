@@ -336,6 +336,9 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                 );
               }
               Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Members added successfully')),
+              );
             },
             child: const Text('Add'),
           ),

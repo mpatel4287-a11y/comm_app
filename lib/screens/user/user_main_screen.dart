@@ -5,6 +5,7 @@ import 'user_home_screen.dart';
 import 'user_explore_screen.dart';
 import 'user_calendar_screen.dart';
 import 'user_profile_screen.dart';
+import '../../widgets/top_action_bar.dart';
 
 class UserMainScreen extends StatefulWidget {
   const UserMainScreen({super.key});
@@ -40,7 +41,29 @@ class _UserMainScreenState extends State<UserMainScreen> {
         backgroundColor: Colors.blue.shade900,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
+          // Animated Top Action Bar (Notification, Theme, Profile)
+          TopActionBar(
+            showProfile: true,
+            onNotificationTap: () {
+              // Could navigate to a user notifications screen in future
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Notifications - Coming soon'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
+            onProfileTap: () {
+              // Navigate to profile screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UserProfileScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _screens[_currentIndex],

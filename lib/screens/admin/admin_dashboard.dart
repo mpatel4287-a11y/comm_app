@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use, unused_import
 
 import 'package:flutter/material.dart';
 import 'member_list_screen.dart';
@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/theme_service.dart';
 import '../../services/language_service.dart';
+import '../../widgets/top_action_bar.dart';
 import 'package:provider/provider.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -58,17 +59,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     final isManager = _role == 'manager';
-    final themeService = Provider.of<ThemeService>(context);
     final lang = Provider.of<LanguageService>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isManager ? lang.translate('manager_portal') : lang.translate('admin_dashboard')),
+        title: Text(lang.translate('admin_dashboard')),
         actions: [
-          IconButton(
-            icon: Icon(themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () => themeService.toggleTheme(),
-          ),
           // Language Switcher in App Bar for quick access
           TextButton(
             onPressed: () {
@@ -77,9 +73,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
             },
             child: Text(
               lang.currentLanguage == 'en' ? 'GUJ' : 'ENG',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
+          // Animated Top Action Bar (Notification, Theme, Profile)
+          TopActionBar(
+            showProfile: true,
+            onNotificationTap: () {
+              Navigator.pushNamed(context, '/admin/notifications');
+            },
+            onProfileTap: () {
+              Navigator.pushNamed(context, '/user/settings');
+            },
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _logout(context),
@@ -121,23 +132,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.admin_panel_settings,
-              title: lang.translate('managers'),
-              subtitle: lang.translate('manage_managers'),
-              color: Colors.orange,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => MemberListScreen(
-                    isGlobal: true,
-                    showOnlyManagers: true,
-                    familyName: lang.translate('managers'),
-                  ),
-                ),
-              ),
-            ),
+
             const SizedBox(height: 24),
             _buildSectionTitle(lang.translate('organization')),
             const SizedBox(height: 12),
@@ -167,7 +162,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               color: Colors.redAccent,
               onTap: () => Navigator.pushNamed(context, '/admin/notifications'),
             ),
-            
+
             if (!isManager) ...[
               const SizedBox(height: 24),
               _buildSectionTitle(lang.translate('insights')),
@@ -181,6 +176,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 onTap: () => Navigator.pushNamed(context, '/admin/analytics'),
               ),
             ],
+            const SizedBox(height: 24),
+            _buildSectionTitle(lang.translate('settings')),
+            const SizedBox(height: 12),
+            _buildDashboardCard(
+              context,
+              icon: Icons.settings,
+              title: lang.translate('settings'),
+              subtitle: lang.translate('advanced'),
+              color: Colors.indigo,
+              onTap: () => Navigator.pushNamed(context, '/user/settings'),
+            ),
           ],
         ),
       ),

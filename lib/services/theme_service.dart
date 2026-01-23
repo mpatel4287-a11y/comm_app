@@ -5,16 +5,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeService extends ChangeNotifier {
   static const String _prefKey = 'is_dark_mode';
+  static const String _fontScaleKey = 'font_scale';
+
   bool _isDarkMode = false;
   bool _isInitialized = false;
+  double _fontScale = 1.0; // 1.0 = default size
 
   bool get isDarkMode => _isDarkMode;
+  double get textScale => _fontScale;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     final prefs = await SharedPreferences.getInstance();
     _isDarkMode = prefs.getBool(_prefKey) ?? false;
+    _fontScale = prefs.getDouble(_fontScaleKey) ?? 1.0;
     _isInitialized = true;
     notifyListeners();
   }
@@ -26,8 +31,58 @@ class ThemeService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setTextScale(double scale) async {
+    // Clamp to a reasonable range for readability
+    _fontScale = scale.clamp(0.8, 1.4);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_fontScaleKey, _fontScale);
+    notifyListeners();
+  }
+
   ThemeData getTheme() {
-    return _isDarkMode ? _darkTheme : _lightTheme;
+    final baseTheme = _isDarkMode ? _darkTheme : _lightTheme;
+
+    final scaledTextTheme = _scaleTextTheme(baseTheme.textTheme, _fontScale);
+
+    return baseTheme.copyWith(
+      textTheme: scaledTextTheme,
+      primaryTextTheme: scaledTextTheme,
+      appBarTheme: baseTheme.appBarTheme.copyWith(
+        titleTextStyle: (baseTheme.appBarTheme.titleTextStyle ??
+                baseTheme.textTheme.titleLarge ??
+                const TextStyle(fontSize: 20, fontWeight: FontWeight.w600))
+            .copyWith(
+          fontSize:
+              (baseTheme.textTheme.titleLarge?.fontSize ?? 20) * _fontScale,
+        ),
+      ),
+    );
+  }
+
+  TextTheme _scaleTextTheme(TextTheme textTheme, double scale) {
+    return textTheme.copyWith(
+      displayLarge: _scaleTextStyle(textTheme.displayLarge, scale),
+      displayMedium: _scaleTextStyle(textTheme.displayMedium, scale),
+      displaySmall: _scaleTextStyle(textTheme.displaySmall, scale),
+      headlineLarge: _scaleTextStyle(textTheme.headlineLarge, scale),
+      headlineMedium: _scaleTextStyle(textTheme.headlineMedium, scale),
+      headlineSmall: _scaleTextStyle(textTheme.headlineSmall, scale),
+      titleLarge: _scaleTextStyle(textTheme.titleLarge, scale),
+      titleMedium: _scaleTextStyle(textTheme.titleMedium, scale),
+      titleSmall: _scaleTextStyle(textTheme.titleSmall, scale),
+      bodyLarge: _scaleTextStyle(textTheme.bodyLarge, scale),
+      bodyMedium: _scaleTextStyle(textTheme.bodyMedium, scale),
+      bodySmall: _scaleTextStyle(textTheme.bodySmall, scale),
+      labelLarge: _scaleTextStyle(textTheme.labelLarge, scale),
+      labelMedium: _scaleTextStyle(textTheme.labelMedium, scale),
+      labelSmall: _scaleTextStyle(textTheme.labelSmall, scale),
+    );
+  }
+
+  TextStyle? _scaleTextStyle(TextStyle? style, double scale) {
+    if (style == null) return null;
+    if (style.fontSize == null) return style;
+    return style.copyWith(fontSize: style.fontSize! * scale);
   }
 
   static final ThemeData _lightTheme = ThemeData(

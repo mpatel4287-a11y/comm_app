@@ -20,6 +20,9 @@ import 'models/member_model.dart';
 import 'user/user_dashboard.dart';
 import 'screens/user/settings_screen.dart';
 import 'screens/user/member_detail_screen.dart';
+import 'screens/user/user_profile_screen.dart';
+import 'screens/user/enhanced_user_dashboard.dart';
+import 'screens/user/user_notification_screen.dart';
 import 'services/session_manager.dart';
 import 'services/theme_service.dart';
 import 'services/language_service.dart';
@@ -129,6 +132,15 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      builder: (context, child) {
+        final scale = themeService.textScale;
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(scale),
+          ),
+          child: child!,
+        );
+      },
       // Start with initial route - it will check session and redirect
       home: const InitialRoute(),
       routes: {
@@ -140,8 +152,10 @@ class MyApp extends StatelessWidget {
         '/admin/analytics': (_) => const AnalyticsDashboard(),
         '/admin/system-health': (_) => const SystemHealthScreen(),
         '/admin/notifications': (_) => const NotificationCenterScreen(),
-        '/home': (_) => const UserDashboard(),
+        '/home': (_) => const EnhancedUserDashboard(),
         '/user/settings': (_) => const SettingsScreen(),
+        '/user/profile': (_) => const UserProfileScreen(),
+        '/user/notifications': (_) => const UserNotificationScreen(),
         '/user/member-detail': (_) =>
             const MemberDetailScreen(memberId: '', familyDocId: null),
       },

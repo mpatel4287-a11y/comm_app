@@ -13,6 +13,7 @@ class SessionManager {
   static const _keySavedLoginId = 'saved_login_id';
   static const _keySavedPassword = 'saved_password';
   static const _keyBiometricEnabled = 'biometric_enabled';
+  static const _keyNotificationsEnabled = 'notifications_enabled';
 
   // SAVE SESSION (Family level)
   static Future<void> saveSession({
@@ -123,6 +124,17 @@ class SessionManager {
   static Future<bool> isBiometricEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyBiometricEnabled) ?? false;
+  }
+
+  // NOTIFICATION PREFERENCES
+  static Future<void> setNotificationsEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyNotificationsEnabled, enabled);
+  }
+
+  static Future<bool> getNotificationsEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyNotificationsEnabled) ?? true;
   }
 
   // CLEAR SESSION

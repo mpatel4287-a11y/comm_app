@@ -3,11 +3,12 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../services/session_manager.dart';
 import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
 import '../../services/theme_service.dart';
-import 'package:provider/provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,6 +22,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _familyName;
   String? _familyId;
   String? _role;
+  bool _isAdmin = false;
+  double _textScale = 1.0;
 
   @override
   void initState() {
@@ -32,11 +35,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final familyName = await SessionManager.getFamilyName();
     final familyId = await SessionManager.getFamilyId();
     final role = await SessionManager.getRole();
+    final isAdmin = await SessionManager.getIsAdmin() ?? false;
+    final notificationsEnabled =
+        await SessionManager.getNotificationsEnabled();
 
     setState(() {
       _familyName = familyName;
       _familyId = familyId?.toString();
       _role = role;
+      _isAdmin = isAdmin;
+      _notificationsEnabled = notificationsEnabled;
     });
   }
 
@@ -44,7 +52,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageService>(context);
     final theme = Provider.of<ThemeService>(context);
-    
+
+    _textScale = theme.textScale;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.translate('settings')),
@@ -67,7 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
-                // Navigate to profile edit
+                // Navigate to profile edit (can be wired to profile screen)
               },
             ),
           ),
@@ -84,6 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: _notificationsEnabled,
                   onChanged: (value) {
                     setState(() => _notificationsEnabled = value);
+                    SessionManager.setNotificationsEnabled(value);
                   },
                 ),
                 const Divider(),
@@ -91,9 +102,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Text(lang.translate('dark_mode')),
                   subtitle: Text(lang.translate('use_dark_theme')),
                   value: theme.isDarkMode,
-                  onChanged: (value) {
+                  onChanged: (_) {
                     theme.toggleTheme();
                   },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.text_fields),
+                  title: Text(lang.translate('text_size')),
+                  subtitle: Row(
+                    children: [
+                      ChoiceChip(
+                        label: Text(lang.translate('text_size_small')),
+                        selected: _textScale < 0.95,
+                        onSelected: (_) =>
+                            _updateTextScale(context, theme, 0.9),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Text(lang.translate('text_size_normal')),
+                        selected: _textScale >= 0.95 && _textScale <= 1.05,
+                        onSelected: (_) =>
+                            _updateTextScale(context, theme, 1.0),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Text(lang.translate('text_size_large')),
+                        selected: _textScale > 1.05,
+                        onSelected: (_) =>
+                            _updateTextScale(context, theme, 1.2),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -107,13 +147,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 ListTile(
                   title: const Text('English'),
-                  trailing: lang.currentLanguage == 'en' ? const Icon(Icons.check, color: Colors.green) : null,
+                  trailing: lang.currentLanguage == 'en'
+                      ? const Icon(Icons.check, color: Colors.green)
+                      : null,
                   onTap: () => lang.setLanguage('en'),
                 ),
                 const Divider(),
                 ListTile(
                   title: const Text('ગુજરાતી (Gujarati)'),
-                  trailing: lang.currentLanguage == 'gu' ? const Icon(Icons.check, color: Colors.green) : null,
+                  trailing: lang.currentLanguage == 'gu'
+                      ? const Icon(Icons.check, color: Colors.green)
+                      : null,
                   onTap: () => lang.setLanguage('gu'),
                 ),
               ],
@@ -140,7 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Text(lang.translate('digital_id')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    // Logic to open self digital ID
+                    // Logic to open self digital ID can be wired here
                   },
                 ),
               ],
@@ -158,14 +202,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Text(lang.translate('help_faq')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    // Open help
+                    // Open help / FAQ page
                   },
                 ),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.info),
                   title: Text(lang.translate('about')),
-                  subtitle: const Text('Community App v1.2'),
+                  subtitle: const Text('Community App'),
                   onTap: () {
                     showAboutDialog(
                       context: context,
@@ -173,6 +217,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       applicationVersion: '1.2.0',
                     );
                   },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Advanced / Admin Section
+          _buildSectionHeader(lang.translate('advanced')),
+          Card(
+            child: Column(
+              children: [
+                if (_isAdmin) ...[
+                  ListTile(
+                    leading: const Icon(Icons.admin_panel_settings),
+                    title: Text(lang.translate('admin_settings')),
+                    subtitle: Text(lang.translate('notification_center')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.pushNamed(context, '/admin/notifications');
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.health_and_safety),
+                    title: Text(lang.translate('system_health')),
+                    subtitle: Text(lang.translate('view_stats')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.pushNamed(context, '/admin/system-health');
+                    },
+                  ),
+                  const Divider(),
+                ],
+                ListTile(
+                  leading: const Icon(Icons.restore),
+                  title: Text(lang.translate('reset_settings')),
+                  subtitle: Text(lang.translate('reset_settings_desc')),
+                  onTap: () => _resetSettings(context),
                 ),
               ],
             ),
@@ -217,6 +299,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _updateTextScale(
+    BuildContext context,
+    ThemeService theme,
+    double scale,
+  ) async {
+    setState(() {
+      _textScale = scale;
+    });
+    await theme.setTextScale(scale);
+  }
+
+  Future<void> _resetSettings(BuildContext context) async {
+    final lang = Provider.of<LanguageService>(context, listen: false);
+    final theme = Provider.of<ThemeService>(context, listen: false);
+
+    // Ensure light theme
+    if (theme.isDarkMode) {
+      await theme.toggleTheme();
+    }
+
+    await theme.setTextScale(1.0);
+    await lang.setLanguage('en');
+    await SessionManager.setNotificationsEnabled(true);
+
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = true;
+        _textScale = 1.0;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(lang.translate('reset_done'))),
+      );
+    }
+  }
+
   Future<void> _showLogoutDialog(LanguageService lang) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -243,3 +360,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 }
+
