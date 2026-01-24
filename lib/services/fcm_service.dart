@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class FcmService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
@@ -19,15 +20,17 @@ class FcmService {
       // User declined or has not accepted permission
     }
 
-    // 2. Setup Local Notifications for Foreground awareness
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
+    // 2. Setup Local Notifications for Foreground awareness - ONLY FOR NON-WEB
+    if (!kIsWeb) {
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      
+      const InitializationSettings initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+      );
 
-    await _localNotifications.initialize(initializationSettings);
+      await _localNotifications.initialize(initializationSettings);
+    }
 
     // 3. Handle Foreground Messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -46,6 +49,8 @@ class FcmService {
   }
 
   static Future<void> _showLocalNotification(RemoteMessage message) async {
+    if (kIsWeb) return; // Browser shows notifications automatically via service worker if configured
+
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'high_importance_channel', // id

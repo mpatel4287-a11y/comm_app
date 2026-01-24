@@ -26,6 +26,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   String? _currentUserRole;
   bool _loading = false;
   bool _sendPush = false;
+  DateTime? _selectedExpiryDate;
 
   @override
   void initState() {
@@ -54,6 +55,10 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     }
 
     setState(() => _loading = true);
+    
+    // Default to 7 days from now if not selected
+    final expiry = _selectedExpiryDate ?? DateTime.now().add(const Duration(days: 7));
+    
     try {
       await _notificationService.createNotification(
         title: _titleCtrl.text.trim(),
@@ -61,7 +66,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         type: 'announcement',
         targetType: _targetType,
         targetId: _targetType == 'family' ? _selectedFamilyDocId : null,
+
         createdBy: _currentUserRole ?? 'admin',
+        expiresAt: expiry,
       );
 
       // --- NEW: Trigger Push Notification if enabled ---
@@ -175,6 +182,44 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       subtitle: const Text('Alert users even if the app is closed'),
                       value: _sendPush,
                       onChanged: (val) => setState(() => _sendPush = val),
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      leading: const Icon(Icons.timer_off_outlined),
+                      title: Text(
+                        _selectedExpiryDate == null
+                            ? 'Auto-delete after 7 days (Default)'
+                            : 'Expires on: ${_selectedExpiryDate!.day}/${_selectedExpiryDate!.month}/${_selectedExpiryDate!.year}',
+                      ),
+                      subtitle: const Text('Tap to change expiry date'),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now().add(const Duration(days: 7)),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null) {
+                          // Set time to end of day (23:59:59)
+                          final endOfDay = DateTime(
+                            picked.year,
+                            picked.month,
+                            picked.day,
+                            23, 59, 59,
+                          );
+                          setState(() => _selectedExpiryDate = endOfDay);
+                        }
+                      },
+                      trailing: _selectedExpiryDate != null
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () => setState(() => _selectedExpiryDate = null),
+                            )
+                          : null,
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton.icon(

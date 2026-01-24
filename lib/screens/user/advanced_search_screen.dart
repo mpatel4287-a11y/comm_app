@@ -138,26 +138,25 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
     final theme = Provider.of<ThemeService>(context);
     final isDark = theme.isDarkMode;
 
-    return Scaffold(
-      backgroundColor: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-      appBar: AppBar(
-        title: Text(lang.translate('global_search')),
-        backgroundColor: Colors.blue.shade900,
-        actions: [
-          if (_selectedBloodGroup != null ||
-              _selectedCity != null ||
-              _selectedFamily != null ||
-              _selectedMaritalStatus != null ||
-              _searchController.text.isNotEmpty)
-            IconButton(
+    return Column(
+      children: [
+        const SizedBox(height: 24), // Move content down
+        // Filter Header (Moved from AppBar actions to body)
+        if (_selectedBloodGroup != null ||
+            _selectedCity != null ||
+            _selectedFamily != null ||
+            _selectedMaritalStatus != null ||
+            _searchController.text.isNotEmpty)
+          Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 16, top: 8),
+            color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+            child: TextButton.icon(
               icon: const Icon(Icons.clear_all),
-              tooltip: lang.translate('clear_filters'),
+              label: Text(lang.translate('clear_filters')),
               onPressed: _clearFilters,
             ),
-        ],
-      ),
-      body: Column(
-        children: [
+          ),
           // Search Bar
           Container(
             padding: const EdgeInsets.all(16),
@@ -302,7 +301,6 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
                   ),
           ),
         ],
-      ),
     );
   }
 

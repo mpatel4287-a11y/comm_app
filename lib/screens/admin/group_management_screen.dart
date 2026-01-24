@@ -115,6 +115,7 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                             fatherName: '',
                             motherName: '',
                             gotra: '',
+                            gender: 'male',
                             birthDate: '',
                             age: 0,
                             education: '', // Added
@@ -296,53 +297,55 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add Members to ${group.name}'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: availableMembers.length,
-            itemBuilder: (context, index) {
-              final member = availableMembers[index];
-              return CheckboxListTile(
-                title: Text(member.fullName),
-                value: _selectedMembers.contains(member.id),
-                onChanged: (checked) {
-                  setState(() {
-                    if (checked == true) {
-                      _selectedMembers.add(member.id);
-                    } else {
-                      _selectedMembers.remove(member.id);
-                    }
-                  });
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              for (final memberId in _selectedMembers) {
-                await _groupService.addMemberToGroup(
-                  familyDocId: _familyDocId!,
-                  groupId: group.id,
-                  memberId: memberId,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Add Members to ${group.name}'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: availableMembers.length,
+              itemBuilder: (context, index) {
+                final member = availableMembers[index];
+                return CheckboxListTile(
+                  title: Text(member.fullName),
+                  value: _selectedMembers.contains(member.id),
+                  onChanged: (checked) {
+                    setDialogState(() {
+                      if (checked == true) {
+                        _selectedMembers.add(member.id);
+                      } else {
+                        _selectedMembers.remove(member.id);
+                      }
+                    });
+                  },
                 );
-              }
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Members added successfully')),
-              );
-            },
-            child: const Text('Add'),
+              },
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                for (final memberId in _selectedMembers) {
+                  await _groupService.addMemberToGroup(
+                    familyDocId: _familyDocId!,
+                    groupId: group.id,
+                    memberId: memberId,
+                  );
+                }
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Members added successfully')),
+                );
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import '../../services/language_service.dart';
 import '../../services/member_service.dart';
 import '../../services/photo_service.dart';
+import '../../services/session_manager.dart';
 import '../user/member_detail_screen.dart';
 
 // Placeholder for AddMemberScreen
@@ -20,12 +21,14 @@ class AddMemberScreen extends StatefulWidget {
   final String familyDocId;
   final String familyName;
   final String? subFamilyDocId; // NEW: Optional sub-family ID
+  final String? initialParentMid;
 
   const AddMemberScreen({
     super.key,
     required this.familyDocId,
     required this.familyName,
     this.subFamilyDocId,
+    this.initialParentMid,
   });
 
   @override
@@ -58,11 +61,34 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   final PhotoService _photoService = PhotoService();
 
+  String _gender = 'male'; // Added
   String _bloodGroup = '';
   String _marriageStatus = 'unmarried';
+  String _relationToHead = 'none';
+  String _subFamilyHeadRelation = '';
+  bool _hasFamilyHead = false;
   List<String> _tags = [];
   List<Map<String, String>> _firms = [];
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialParentMid != null) {
+      _parentMidCtrl.text = widget.initialParentMid!;
+    }
+    _checkExistingHead();
+  }
+
+  Future<void> _checkExistingHead() async {
+    final hasHead = await MemberService().hasSubFamilyHead(
+      widget.familyDocId,
+      widget.subFamilyDocId ?? '',
+    );
+    if (mounted) {
+      setState(() => _hasFamilyHead = hasHead);
+    }
+  }
 
   Future<void> _launchWhatsApp() async {
     final url = 'https://wa.me/${_whatsappCtrl.text.trim()}';
@@ -196,6 +222,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         fatherName: _fatherNameCtrl.text.trim(),
         motherName: _motherNameCtrl.text.trim(),
         gotra: _gotraCtrl.text.trim(),
+        gender: _gender, // Added
         birthDate: _birthDateCtrl.text.trim(),
         education: _educationCtrl.text.trim(), // Added
         bloodGroup: _bloodGroup,
@@ -212,6 +239,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         parentMid: _parentMidCtrl.text.trim(),
         password: _passwordCtrl.text.trim().isEmpty ? '123456' : _passwordCtrl.text.trim(), // Added
         photoUrl: photoUrl,
+        relationToHead: _relationToHead,
+        subFamilyHeadRelationToMainHead: _subFamilyHeadRelation,
       );
 
       if (mounted) {
@@ -331,6 +360,15 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     obscureText: true,
                     validator: (v) => (v == null || v.length != 8 || !RegExp(r'^[a-zA-Z0-9]+$').hasMatch(v)) 
                       ? lang.translate('must_be_8_chars') : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _gender,
+                    decoration: InputDecoration(labelText: lang.translate('gender')),
+                    items: ['male', 'female']
+                        .map((g) => DropdownMenuItem(value: g, child: Text(lang.translate(g))))
+                        .toList(),
+                    onChanged: (v) => setState(() => _gender = v ?? 'male'),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -530,6 +568,74 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                       hintText: 'Enter parent MID (optional)',
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  
+                  // Relation to Head
+                  DropdownButtonFormField<String>(
+                    value: _relationToHead,
+                    decoration: InputDecoration(
+                      labelText: lang.translate('relation_to_head'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'none',
+                        child: Text(lang.translate('none')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'head',
+                        enabled: !_hasFamilyHead,
+                        child: Text(
+                          lang.translate('head_of_family') + 
+                          (_hasFamilyHead ? ' (Already Assigned)' : ''),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'wife',
+                        child: Text(lang.translate('wife')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'daughter',
+                        child: Text(lang.translate('daughter')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'son',
+                        child: Text(lang.translate('son')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'daughter_in_law',
+                        child: Text(lang.translate('daughter_in_law')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'grandson',
+                        child: Text(lang.translate('grandson')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'grandsister',
+                        child: Text(lang.translate('grandsister')),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _relationToHead = val ?? 'none';
+                      });
+                    },
+                  ),
+                  
+                  if (_relationToHead == 'head' && widget.subFamilyDocId != null) ...[
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: lang.translate('relation_to_main_head'),
+                        hintText: 'Relationship of this head with main head (e.g. Son)',
+                      ),
+                      onChanged: (val) {
+                        setState(() {
+                          _subFamilyHeadRelation = val;
+                        });
+                      },
+                    ),
+                  ],
 
                   // Tags (Admin Only)
                   const SizedBox(height: 20),
@@ -659,10 +765,34 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   List<Map<String, String>> _firms = [];
   String _bloodGroup = '';
+  String _gender = 'male'; // Added
   String _marriageStatus = 'unmarried';
-  List<String> _tags = [];
+  String _relationToHead = 'none';
+  String _subFamilyHeadRelation = '';
   String _memberMid = ''; // New field
   bool _loading = true;
+  bool _hasFamilyHead = false;
+  bool _alreadyHead = false; // Is THIS member currently the head?
+  List<String> _tags = [];
+
+  final PhotoService _photoService = PhotoService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMemberData();
+    _checkExistingHead();
+  }
+
+  Future<void> _checkExistingHead() async {
+    final hasHead = await MemberService().hasSubFamilyHead(
+      widget.familyDocId,
+      widget.subFamilyDocId ?? '',
+    );
+    if (mounted) {
+      setState(() => _hasFamilyHead = hasHead);
+    }
+  }
 
   Future<void> _launchWhatsApp() async {
     final url = 'https://wa.me/${_whatsappCtrl.text.trim()}';
@@ -697,8 +827,6 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
     }
   }
 
-  final PhotoService _photoService = PhotoService();
-
   Future<void> _pickProfilePhoto() async {
     try {
       final XFile? image = await _imagePicker.pickImage(
@@ -726,12 +854,6 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadMemberData();
-  }
-
   Future<void> _loadMemberData() async {
     final member = await MemberService().getMember(
       mainFamilyDocId: widget.familyDocId,
@@ -754,6 +876,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
       _facebookCtrl.text = member.facebook;
       _passwordCtrl.text = member.password; // Added
       _bloodGroup = member.bloodGroup;
+      _gender = member.gender; // Added
       _marriageStatus = member.marriageStatus;
       _nativeHomeCtrl.text = member.nativeHome;
       _dktFamilyIdCtrl.text = member.familyId;
@@ -762,6 +885,9 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
       _firms = List.from(member.firms);
       _profilePhotoUrl = member.photoUrl;
       _memberMid = member.mid;
+      _relationToHead = member.relationToHead;
+      _subFamilyHeadRelation = member.subFamilyHeadRelationToMainHead;
+      _alreadyHead = _relationToHead == 'head';
       if (_memberMid.isEmpty) {
         _memberMid = MemberModel.generateMid(member.familyId, member.subFamilyId);
       }
@@ -897,6 +1023,15 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                 obscureText: true,
                 validator: (v) => (v == null || v.length != 8 || !RegExp(r'^[a-zA-Z0-9]+$').hasMatch(v)) 
                   ? 'Must be 8 alphanumeric characters' : null,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _gender,
+                decoration: InputDecoration(labelText: lang.translate('gender')),
+                items: ['male', 'female']
+                    .map((g) => DropdownMenuItem(value: g, child: Text(lang.translate(g))))
+                    .toList(),
+                onChanged: (v) => setState(() => _gender = v ?? 'male'),
               ),
               const SizedBox(height: 12),
               // Education Field
@@ -1138,26 +1273,95 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 
               // Family Information
               const SizedBox(height: 20),
-              const Text(
-                'Family Information',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Text(
+                lang.translate('family_information'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _dktFamilyIdCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'DKT Family ID',
+                decoration: InputDecoration(
+                  labelText: lang.translate('dkt_family_id'),
                   hintText: 'Enter DKT Family ID',
                 ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _parentMidCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Parent Member ID',
+                decoration: InputDecoration(
+                  labelText: lang.translate('parent_member_id'),
                   hintText: 'Enter parent MID (optional)',
                 ),
               ),
+              const SizedBox(height: 12),
+              
+              // Relation to Head
+              DropdownButtonFormField<String>(
+                value: _relationToHead,
+                decoration: InputDecoration(
+                  labelText: lang.translate('relation_to_head'),
+                  border: const OutlineInputBorder(),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: 'none',
+                    child: Text(lang.translate('none')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'head',
+                    enabled: !_hasFamilyHead || _alreadyHead,
+                    child: Text(
+                      lang.translate('head_of_family') + 
+                      ((_hasFamilyHead && !_alreadyHead) ? ' (Already Assigned)' : ''),
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'wife',
+                    child: Text(lang.translate('wife')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'daughter',
+                    child: Text(lang.translate('daughter')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'son',
+                    child: Text(lang.translate('son')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'daughter_in_law',
+                    child: Text(lang.translate('daughter_in_law')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'grandson',
+                    child: Text(lang.translate('grandson')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'grandsister',
+                    child: Text(lang.translate('grandsister')),
+                  ),
+                ],
+                onChanged: (val) {
+                  setState(() {
+                    _relationToHead = val ?? 'none';
+                  });
+                },
+              ),
+              
+              if (_relationToHead == 'head' && widget.subFamilyDocId != null) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  initialValue: _subFamilyHeadRelation,
+                  decoration: InputDecoration(
+                    labelText: lang.translate('relation_to_main_head'),
+                    hintText: 'Relationship of this head with main head (e.g. Son)',
+                  ),
+                  onChanged: (val) {
+                    setState(() {
+                      _subFamilyHeadRelation = val;
+                    });
+                  },
+                ),
+              ],
 
               // Tags
               const SizedBox(height: 20),
@@ -1259,6 +1463,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                         'fatherName': _fatherNameCtrl.text.trim(),
                         'motherName': _motherNameCtrl.text.trim(),
                         'gotra': _gotraCtrl.text.trim(),
+                        'gender': _gender, // Added
                         'birthDate': _birthDateCtrl.text.trim(),
                         'education': _educationCtrl.text.trim(), // Added
                         'bloodGroup': _bloodGroup,
@@ -1277,6 +1482,8 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                         'password': _passwordCtrl.text.trim(), // Added
                         'familyId': _dktFamilyIdCtrl.text.trim(),
                         'photoUrl': photoUrl,
+                        'relationToHead': _relationToHead,
+                        'subFamilyHeadRelationToMainHead': _subFamilyHeadRelation,
                       },
                     );
 
@@ -1331,10 +1538,12 @@ class _MemberListScreenState extends State<MemberListScreen>
   late Stream<QuerySnapshot> _membersStream;
   String _searchQuery = '';
   String _selectedTag = '';
+  String? _userRole;
 
   @override
   void initState() {
     super.initState();
+    _loadRole();
     WidgetsBinding.instance.addObserver(this);
 
     // Debug logging
@@ -1401,6 +1610,13 @@ class _MemberListScreenState extends State<MemberListScreen>
     }
   }
 
+
+
+  Future<void> _loadRole() async {
+    final role = await SessionManager.getRole();
+    setState(() => _userRole = role);
+  }
+
   // Helper function to build initials widget
   Widget _buildInitials(Map<String, dynamic> data) {
     return Container(
@@ -1446,7 +1662,7 @@ class _MemberListScreenState extends State<MemberListScreen>
         title: Text(widget.showOnlyManagers ? lang.translate('managers') : widget.familyName),
         backgroundColor: Colors.blue.shade900,
         actions: [
-          if (!widget.isGlobal)
+          if (!widget.isGlobal && _userRole != 'manager')
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () {
@@ -1710,44 +1926,45 @@ class _MemberListScreenState extends State<MemberListScreen>
                                   ),
 
                                   // DELETE
-                                  _buildCompactAction(
-                                    icon: Icons.delete,
-                                    color: Colors.red,
-                                    onTap: () async {
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (_) => AlertDialog(
-                                          title: const Text('Delete Member'),
-                                          content: const Text(
-                                            'Are you sure you want to delete this member?',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, false),
-                                              child: const Text('Cancel'),
+                                  if (_userRole != 'manager')
+                                    _buildCompactAction(
+                                      icon: Icons.delete,
+                                      color: Colors.red,
+                                      onTap: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            title: const Text('Delete Member'),
+                                            content: const Text(
+                                              'Are you sure you want to delete this member?',
                                             ),
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.red,
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context, false),
+                                                child: const Text('Cancel'),
                                               ),
-                                              onPressed: () =>
-                                                  Navigator.pop(context, true),
-                                              child: const Text('Delete'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                      if (confirm == true) {
-                                        await MemberService().deleteMember(
-                                          mainFamilyDocId: widget.familyDocId ?? data['familyDocId'] ?? '',
-                                          subFamilyDocId:
-                                              widget.subFamilyDocId ?? data['subFamilyDocId'] ?? '',
-                                          memberId: doc.id,
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                                onPressed: () =>
+                                                    Navigator.pop(context, true),
+                                                child: const Text('Delete'),
+                                              ),
+                                            ],
+                                          ),
                                         );
-                                      }
-                                    },
-                                  ),
+                                        if (confirm == true) {
+                                          await MemberService().deleteMember(
+                                            mainFamilyDocId: widget.familyDocId ?? data['familyDocId'] ?? '',
+                                            subFamilyDocId:
+                                                widget.subFamilyDocId ?? data['subFamilyDocId'] ?? '',
+                                            memberId: doc.id,
+                                          );
+                                        }
+                                      },
+                                    ),
                                 ],
                               ),
                             ],
@@ -1762,7 +1979,7 @@ class _MemberListScreenState extends State<MemberListScreen>
           ),
         ],
       ),
-      floatingActionButton: widget.isGlobal
+      floatingActionButton: (widget.isGlobal || _userRole == 'manager')
           ? null
           : FloatingActionButton(
               backgroundColor: Colors.blue.shade900,

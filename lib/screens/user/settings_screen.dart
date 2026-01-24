@@ -9,6 +9,11 @@ import '../../services/session_manager.dart';
 import '../../services/auth_service.dart';
 import '../../services/language_service.dart';
 import '../../services/theme_service.dart';
+import '../../models/member_model.dart';
+import '../../services/member_service.dart';
+import 'family_tree_view.dart';
+import 'digital_id_screen.dart';
+import '../admin/member_list_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -24,6 +29,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _role;
   bool _isAdmin = false;
   double _textScale = 1.0;
+  
+  final MemberService _memberService = MemberService();
+  MemberModel? _currentUser;
 
   @override
   void initState() {
@@ -36,8 +44,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final familyId = await SessionManager.getFamilyId();
     final role = await SessionManager.getRole();
     final isAdmin = await SessionManager.getIsAdmin() ?? false;
-    final notificationsEnabled =
-        await SessionManager.getNotificationsEnabled();
+    final notificationsEnabled = await SessionManager.getNotificationsEnabled();
+    
+    final familyDocId = await SessionManager.getFamilyDocId();
+    final subFamilyDocId = await SessionManager.getSubFamilyDocId();
+    final memberId = await SessionManager.getMemberDocId();
+
+    if (familyDocId != null && memberId != null) {
+      _currentUser = await _memberService.getMember(
+        mainFamilyDocId: familyDocId,
+        subFamilyDocId: subFamilyDocId ?? '',
+        memberId: memberId,
+      );
+    }
 
     setState(() {
       _familyName = familyName;
@@ -171,11 +190,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.people),
-                  title: Text(lang.translate('view_family_members')),
+                  leading: const Icon(Icons.account_tree),
+                  title: Text(lang.translate('my_family_tree')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    Navigator.pushNamed(context, '/familyMembers');
+                    if (_currentUser != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FamilyTreeView(
+                            mainFamilyDocId: _currentUser!.familyDocId,
+                            familyName: _currentUser!.familyName,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.people),
+                  title: Text(lang.translate('my_family_members')),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    if (_currentUser != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MemberListScreen(
+                            isGlobal: false,
+                            familyDocId: _currentUser!.familyDocId,
+                            subFamilyDocId: _currentUser!.subFamilyDocId,
+                            familyName: _currentUser!.familyName,
+                          ),
+                        ),
+                      );
+                    }
                   },
                 ),
                 const Divider(),
@@ -184,7 +234,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Text(lang.translate('digital_id')),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    // Logic to open self digital ID can be wired here
+                    if (_currentUser != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DigitalIdScreen(member: _currentUser!),
+                        ),
+                      );
+                    } else {
+                       ScaffoldMessenger.of(context).showSnackBar(
+                         const SnackBar(content: Text('Loading user data...'))
+                       );
+                    }
                   },
                 ),
               ],

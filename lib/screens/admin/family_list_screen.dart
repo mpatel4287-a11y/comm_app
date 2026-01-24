@@ -3,11 +3,31 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/family_service.dart';
+import '../../services/session_manager.dart';
 import 'add_family_screen.dart';
+import 'edit_family_screen.dart';
 import 'subfamily_list_screen.dart';
 
-class FamilyListScreen extends StatelessWidget {
+class FamilyListScreen extends StatefulWidget {
   const FamilyListScreen({super.key});
+
+  @override
+  State<FamilyListScreen> createState() => _FamilyListScreenState();
+}
+
+class _FamilyListScreenState extends State<FamilyListScreen> {
+  String? _userRole;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await SessionManager.getRole();
+    setState(() => _userRole = role);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -148,51 +168,70 @@ class FamilyListScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            // BLOCK / UNBLOCK
+                            // EDIT (All with permission)
                             _buildCompactAction(
-                              icon: isBlocked ? Icons.lock_open : Icons.block,
-                              color: isBlocked ? Colors.green : Colors.orange,
-                              onTap: () async {
-                                await FamilyService()
-                                    .toggleBlockFamily(doc.id);
-                              },
-                            ),
-
-                            // DELETE
-                            _buildCompactAction(
-                              icon: Icons.delete,
-                              color: Colors.red,
-                              onTap: () async {
-                                final ok = await showDialog<bool>(
-                                  context: context,
-                                  builder: (c) => AlertDialog(
-                                    title: const Text('Delete Family'),
-                                    content: const Text(
-                                      'Are you sure? This deletes all members.',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(c, false),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.red,
-                                        ),
-                                        onPressed: () =>
-                                            Navigator.pop(c, true),
-                                        child: const Text('Delete'),
-                                      ),
-                                    ],
-                                  ),
+                              icon: Icons.edit,
+                              color: Colors.blue,
+                              onTap: () {
+                                Navigator.push(
+                                  context, 
+                                  MaterialPageRoute(
+                                    builder: (_) => EditFamilyScreen(
+                                      docId: doc.id,
+                                      data: data,
+                                    )
+                                  )
                                 );
-
-                                if (ok == true) {
-                                  await FamilyService().deleteFamily(doc.id);
-                                }
                               },
                             ),
+
+                            // BLOCK / UNBLOCK (Admin only)
+                            if (_userRole != 'manager')
+                              _buildCompactAction(
+                                icon: isBlocked ? Icons.lock_open : Icons.block,
+                                color: isBlocked ? Colors.green : Colors.orange,
+                                onTap: () async {
+                                  await FamilyService()
+                                      .toggleBlockFamily(doc.id);
+                                },
+                              ),
+
+                            // DELETE (Admin only)
+                            if (_userRole != 'manager')
+                              _buildCompactAction(
+                                icon: Icons.delete,
+                                color: Colors.red,
+                                onTap: () async {
+                                  final ok = await showDialog<bool>(
+                                    context: context,
+                                    builder: (c) => AlertDialog(
+                                      title: const Text('Delete Family'),
+                                      content: const Text(
+                                        'Are you sure? This deletes all members.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(c, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                          ),
+                                          onPressed: () =>
+                                              Navigator.pop(c, true),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (ok == true) {
+                                    await FamilyService().deleteFamily(doc.id);
+                                  }
+                                },
+                              ),
                           ],
                         ),
                       ],
@@ -204,17 +243,19 @@ class FamilyListScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white,
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddFamilyScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _userRole == 'manager' 
+          ? null 
+          : FloatingActionButton(
+              backgroundColor: Colors.blue.shade900,
+              foregroundColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddFamilyScreen()),
+                );
+              },
+              child: const Icon(Icons.add),
+            ),
     );
   }
 

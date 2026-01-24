@@ -156,6 +156,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
             const SizedBox(height: 12),
             _buildDashboardCard(
               context,
+              icon: Icons.admin_panel_settings,
+              title: lang.translate('manage_managers'),
+              subtitle: lang.translate('manage_managers_subtitle'),
+              color: Colors.orange,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MemberListScreen(
+                    isGlobal: true,
+                    showOnlyManagers: true,
+                    familyName: lang.translate('managers'),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildDashboardCard(
+              context,
               icon: Icons.notifications_active,
               title: lang.translate('notification_center'),
               subtitle: lang.translate('send_custom_messages'),

@@ -18,6 +18,7 @@ class MemberModel {
   final String fatherName;
   final String motherName;
   final String gotra;
+  final String gender; // male | female
   
   // Education
   final String education;
@@ -50,6 +51,8 @@ class MemberModel {
   final List<String> tags; // admin only, max 15 chars
   final bool isActive;
   final String parentMid; // for family tree (parent member ID)
+  final String relationToHead; // head | wife | daughter | son | daughter_in_law | grandson | grandsister | none
+  final String subFamilyHeadRelationToMainHead; // for joint family linking
   final String tod; // Date of Death (dd/MM/yyyy)
   final DateTime createdAt;
 
@@ -66,6 +69,7 @@ class MemberModel {
     required this.fatherName,
     required this.motherName,
     required this.gotra,
+    required this.gender, // Added
     required this.birthDate,
     required this.age,
     required this.education, // Added
@@ -85,6 +89,8 @@ class MemberModel {
     required this.tags,
     required this.isActive,
     required this.parentMid,
+    this.relationToHead = 'none',
+    this.subFamilyHeadRelationToMainHead = '',
     this.tod = '',
     required this.createdAt,
   });
@@ -161,6 +167,7 @@ class MemberModel {
       'fatherName': fatherName,
       'motherName': motherName,
       'gotra': gotra,
+      'gender': gender,
       'birthDate': birthDate,
       'age': age,
       'education': education, // Added
@@ -179,6 +186,8 @@ class MemberModel {
       'tags': tags,
       'isActive': isActive,
       'parentMid': parentMid,
+      'relationToHead': relationToHead,
+      'subFamilyHeadRelationToMainHead': subFamilyHeadRelationToMainHead,
       'tod': tod,
       'createdAt': createdAt,
     };
@@ -203,6 +212,7 @@ class MemberModel {
       fatherName: data['fatherName'] ?? '',
       motherName: data['motherName'] ?? '',
       gotra: data['gotra'] ?? '',
+      gender: data['gender'] ?? 'male',
       birthDate: data['birthDate'] ?? '',
       age: data['age'] ?? 0,
       education: data['education'] ?? '', // Added
@@ -224,6 +234,8 @@ class MemberModel {
       tags: List<String>.from(data['tags'] ?? []),
       isActive: data['isActive'] ?? true,
       parentMid: data['parentMid'] ?? '',
+      relationToHead: data['relationToHead'] ?? 'none',
+      subFamilyHeadRelationToMainHead: data['subFamilyHeadRelationToMainHead'] ?? '',
       tod: data['tod'] ?? '',
       createdAt: (data['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
     );
@@ -243,6 +255,7 @@ class MemberModel {
     String? fatherName,
     String? motherName,
     String? gotra,
+    String? gender,
     String? birthDate,
     String? education,
     String? bloodGroup,
@@ -261,6 +274,8 @@ class MemberModel {
     List<String>? tags,
     bool? isActive,
     String? parentMid,
+    String? relationToHead,
+    String? subFamilyHeadRelationToMainHead,
     String? tod,
   }) {
     return MemberModel(
@@ -276,6 +291,7 @@ class MemberModel {
       fatherName: fatherName ?? this.fatherName,
       motherName: motherName ?? this.motherName,
       gotra: gotra ?? this.gotra,
+      gender: gender ?? this.gender,
       birthDate: birthDate ?? this.birthDate,
       age: birthDate != null ? MemberModel.calculateAge(birthDate) : age,
       education: education ?? this.education, // Added
@@ -295,6 +311,8 @@ class MemberModel {
       tags: tags ?? this.tags,
       isActive: isActive ?? this.isActive,
       parentMid: parentMid ?? this.parentMid,
+      relationToHead: relationToHead ?? this.relationToHead,
+      subFamilyHeadRelationToMainHead: subFamilyHeadRelationToMainHead ?? this.subFamilyHeadRelationToMainHead,
       tod: tod ?? this.tod,
       createdAt: createdAt,
     );

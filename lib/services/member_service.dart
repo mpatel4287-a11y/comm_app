@@ -32,6 +32,7 @@ class MemberService {
     required String fatherName,
     required String motherName,
     required String gotra,
+    required String gender, // Added
     required String birthDate,
     required String education, // Added
     required String bloodGroup,
@@ -48,6 +49,8 @@ class MemberService {
     required String parentMid,
     required String password, // Added
     String photoUrl = '',
+    String relationToHead = 'none',
+    String subFamilyHeadRelationToMainHead = '',
   }) async {
     final age = MemberModel.calculateAge(birthDate);
 
@@ -91,6 +94,7 @@ class MemberService {
       fatherName: fatherName.trim(),
       motherName: motherName.trim(),
       gotra: gotra.trim(),
+      gender: gender, // Added
       birthDate: birthDate.trim(),
       age: age,
       education: education.trim(), // Added
@@ -110,6 +114,8 @@ class MemberService {
       tags: cleanedTags,
       isActive: true,
       parentMid: parentMid.trim(),
+      relationToHead: relationToHead,
+      subFamilyHeadRelationToMainHead: subFamilyHeadRelationToMainHead,
       createdAt: DateTime.now(),
     );
 
@@ -358,5 +364,19 @@ class MemberService {
       subFamilyDocId,
     ).count().get();
     return snapshot.count ?? 0;
+  }
+
+  // ---------------- CHECK IF SUB-FAMILY HAS HEAD ----------------
+  Future<bool> hasSubFamilyHead(String mainFamilyDocId, String subFamilyDocId) async {
+    final snapshot = await _firestore
+        .collection('families')
+        .doc(mainFamilyDocId)
+        .collection('subfamilies')
+        .doc(subFamilyDocId)
+        .collection('members')
+        .where('relationToHead', isEqualTo: 'head')
+        .limit(1)
+        .get();
+    return snapshot.docs.isNotEmpty;
   }
 }

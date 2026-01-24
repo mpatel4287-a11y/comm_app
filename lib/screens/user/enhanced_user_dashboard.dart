@@ -10,10 +10,13 @@ import '../../services/member_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/theme_service.dart';
 import '../../services/language_service.dart';
-import '../../widgets/top_action_bar.dart';
+
 import 'family_tree_view.dart';
-import 'advanced_search_screen.dart';
+import 'member_detail_screen.dart';
 import 'user_calendar_screen.dart';
+import 'user_notification_screen.dart';
+import 'settings_screen.dart';
+import 'user_search_tab.dart'; 
 import 'dart:math';
 
 class EnhancedUserDashboard extends StatefulWidget {
@@ -35,7 +38,11 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   bool _loading = true;
   String? _familyDocId;
   String? _familyName;
+
+
   MemberModel? _currentUser;
+  String? _userRole;
+  int _selectedIndex = 0; // Tab Index
 
   @override
   void initState() {
@@ -58,7 +65,9 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
       final familyName = await SessionManager.getFamilyName();
       final memberDocId = await SessionManager.getMemberDocId();
       final subFamilyDocId = await SessionManager.getSubFamilyDocId();
-
+      final role = await SessionManager.getRole();
+      
+      _userRole = role;
       _familyDocId = familyDocId;
       _familyName = familyName;
 
@@ -147,224 +156,226 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final lang = Provider.of<LanguageService>(context);
-    final theme = Provider.of<ThemeService>(context);
-    final isDark = theme.isDarkMode;
-
-    if (_loading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(lang.translate('user_dashboard')),
-          backgroundColor: Colors.blue.shade900,
-          actions: [
-            TextButton(
-              onPressed: () {
-                final newLang = lang.currentLanguage == 'en' ? 'gu' : 'en';
-                lang.setLanguage(newLang);
-              },
-              child: Text(
-                lang.currentLanguage == 'en' ? 'GUJ' : 'ENG',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const TopActionBar(showProfile: true),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-      appBar: AppBar(
-        title: Text(lang.translate('user_dashboard')),
-        backgroundColor: Colors.blue.shade900,
-        actions: [
-          TextButton(
-            onPressed: () {
-              final newLang = lang.currentLanguage == 'en' ? 'gu' : 'en';
-              lang.setLanguage(newLang);
-            },
-            child: Text(
-              lang.currentLanguage == 'en' ? 'GUJ' : 'ENG',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          TopActionBar(
-            showProfile: true,
-            onNotificationTap: () {
-              Navigator.pushNamed(context, '/user/notifications');
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadDashboardData,
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            // Header with Family Info
-            SliverToBoxAdapter(child: _buildHeaderSection(lang, isDark)),
-
-            // Quick Stats
-            SliverToBoxAdapter(child: _buildQuickStats(lang, isDark)),
-
-            // Global Search Section
-            SliverToBoxAdapter(child: _buildSearchSection(lang, isDark)),
-
-            // Random Suggestions
-            if (_randomSuggestions.isNotEmpty)
-              SliverToBoxAdapter(
-                child: _buildSectionHeader(
-                  lang.translate('random_suggestions'),
-                  lang.translate('discover_members'),
-                  Icons.auto_awesome,
-                  () => _generateRandomSuggestions(),
-                  lang,
-                  isDark,
-                ),
-              ),
-            SliverToBoxAdapter(child: _buildMemberSuggestions(lang, isDark)),
-
-            // New Members Section
-            if (_newMembers.isNotEmpty)
-              SliverToBoxAdapter(
-                child: _buildSectionHeader(
-                  lang.translate('new_members'),
-                  lang.translate('recently_joined'),
-                  Icons.new_releases,
-                  null,
-                  lang,
-                  isDark,
-                ),
-              ),
-            if (_newMembers.isNotEmpty)
-              SliverToBoxAdapter(child: _buildNewMembersSection(lang, isDark)),
-
-            // Family Tree Section
-            SliverToBoxAdapter(
-              child: _buildSectionHeader(
-                lang.translate('family_tree'),
-                lang.translate('view_family_tree'),
-                Icons.account_tree,
-                () {
-                  if (_familyDocId != null && _familyName != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => FamilyTreeView(
-                          mainFamilyDocId: _familyDocId!,
-                          familyName: _familyName!,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                lang,
-                isDark,
-              ),
-            ),
-
-            // Community Activity
-            SliverToBoxAdapter(
-              child: _buildSectionHeader(
-                lang.translate('community_activity'),
-                lang.translate('recent_activity'),
-                Icons.trending_up,
-                () {
-                   Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const UserCalendarScreen(),
-                    ),
-                  );
-                },
-                lang,
-                isDark,
-              ),
-            ),
-            SliverToBoxAdapter(child: _buildCommunityActivity(lang, isDark)),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
-          ],
-        ),
+  void _navigateToMember(MemberModel member) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MemberDetailScreen(memberId: member.id),
       ),
     );
   }
 
-  Widget _buildHeaderSection(LanguageService lang, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade900, Colors.blue.shade700],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+  void _switchTab(int index) {
+    setState(() => _selectedIndex = index);
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeIn);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final lang = Provider.of<LanguageService>(context);
+    final themeService = Provider.of<ThemeService>(context);
+    final isDark = themeService.isDarkMode;
+
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          // 0. HOME
+          _buildHomeTab(context, lang, isDark),
+          
+          // 1. SEARCH
+          const UserSearchTab(),
+          
+          // 2. CALENDAR
+          const UserCalendarScreen(),
+          
+          // 3. NOTIFICATIONS
+          const UserNotificationScreen(),
+
+          // 4. PROFILE (Settings)
+          const SettingsScreen(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        indicatorColor: Colors.blue.shade900.withOpacity(0.2),
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home, color: Colors.blue.shade900),
+            label: lang.translate('home'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.search_outlined),
+            selectedIcon: Icon(Icons.search, color: Colors.blue.shade900),
+            label: lang.translate('connect'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.calendar_today_outlined),
+            selectedIcon: Icon(Icons.calendar_today, color: Colors.blue.shade900),
+            label: lang.translate('events'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.notifications_outlined),
+            selectedIcon: Icon(Icons.notifications, color: Colors.blue.shade900),
+            label: lang.translate('notifications'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.person_outlined),
+            selectedIcon: Icon(Icons.person, color: Colors.blue.shade900),
+            label: lang.translate('profile'),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _familyName ?? 'Community',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${lang.translate('total_members')}: ${_stats['total'] ?? 0}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
+    );
+  }
+
+  Widget _buildHomeTab(BuildContext context, LanguageService lang, bool isDark) {
+    return RefreshIndicator(
+      onRefresh: _loadDashboardData,
+      child: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          // 1. App Bar with Profile Quick Link (Shortened)
+          SliverAppBar(
+            expandedHeight: 100.0,
+            floating: false,
+            pinned: true,
+            backgroundColor: Colors.blue.shade900,
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.only(left: 16, bottom: 12),
+              title: Text(
+                '${lang.translate('welcome')}, ${_currentUser?.fullName.split(' ')[0] ?? 'User'}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.blue.shade800, Colors.blue.shade900],
+                  ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  shape: BoxShape.circle,
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16, top: 4),
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedIndex = 4),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.white,
+                    backgroundImage: _currentUser?.photoUrl.isNotEmpty == true
+                        ? NetworkImage(_currentUser!.photoUrl)
+                        : null,
+                    child: _currentUser?.photoUrl.isEmpty ?? true
+                        ? Text(
+                            _currentUser?.fullName.isNotEmpty == true 
+                                ? _currentUser!.fullName[0].toUpperCase() 
+                                : '?',
+                            style: TextStyle(color: Colors.blue.shade900, fontSize: 14),
+                          )
+                        : null,
+                  ),
                 ),
-                child: const Icon(Icons.people, color: Colors.white, size: 32),
               ),
             ],
           ),
+
+          // 2. Dashboard Content
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                // Quick Statistics (Unbound layout fix)
+                _buildQuickStats(lang, isDark),
+                const SizedBox(height: 16),
+
+                // Manager Specific Tools
+                if (_userRole == 'manager') ...[
+                  _buildManagerTools(lang, isDark),
+                  const SizedBox(height: 16),
+                ],
+                
+                // Section: Family Tree
+                _buildSectionHeader(
+                  lang.translate('family_tree'),
+                  lang.translate('view_ancestry'),
+                  Icons.account_tree,
+                  () {
+                    if (_familyDocId != null && _familyName != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FamilyTreeView(
+                            mainFamilyDocId: _familyDocId!,
+                            familyName: _familyName!,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  lang,
+                  isDark,
+                ),
+                _buildFamilyStats(lang, isDark),
+
+                // Section: Community Activity (Events)
+                _buildSectionHeader(
+                  lang.translate('community_activity'),
+                  lang.translate('recent_events'),
+                  Icons.event_note,
+                  () => setState(() => _selectedIndex = 2), // Go to Calendar tab
+                  lang,
+                  isDark,
+                ),
+                _buildCommunityActivity(lang, isDark),
+
+                // Section: New Members
+                if (_newMembers.isNotEmpty) ...[
+                  _buildSectionHeader(
+                    lang.translate('new_members'),
+                    lang.translate('recently_joined'),
+                    Icons.person_add,
+                    null,
+                    lang,
+                    isDark,
+                  ),
+                  _buildNewMembersSection(lang, isDark),
+                ],
+
+                // Section: Member Spotlight
+                if (_randomSuggestions.isNotEmpty) ...[
+                  _buildSectionHeader(
+                    lang.translate('member_spotlight'),
+                    lang.translate('discover_members'),
+                    Icons.stars,
+                    () => _generateRandomSuggestions(),
+                    lang,
+                    isDark,
+                  ),
+                  _buildMemberSuggestions(lang, isDark),
+                ],
+
+                const SizedBox(height: 50),
+              ]),
+            ),
+          ),
         ],
       ),
     );
   }
+
+
 
   Widget _buildQuickStats(LanguageService lang, bool isDark) {
     return Container(
@@ -372,32 +383,44 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
       child: Row(
         children: [
           Expanded(
-            child: _buildStatCard(
-              lang.translate('total_members'),
-              '${_stats['total'] ?? 0}',
-              Icons.people,
-              Colors.blue,
-              isDark,
+            child: InkWell(
+              onTap: () => _switchTab(1),
+              borderRadius: BorderRadius.circular(12),
+              child: _buildStatCard(
+                lang.translate('total_members'),
+                '${_stats['total'] ?? 0}',
+                Icons.people,
+                Colors.blue,
+                isDark,
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _buildStatCard(
-              lang.translate('active_members'),
-              '${_stats['active'] ?? 0}',
-              Icons.check_circle,
-              Colors.green,
-              isDark,
+            child: InkWell(
+              onTap: () => _switchTab(1),
+              borderRadius: BorderRadius.circular(12),
+              child: _buildStatCard(
+                lang.translate('active_members'),
+                '${_stats['active'] ?? 0}',
+                Icons.check_circle,
+                Colors.green,
+                isDark,
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _buildStatCard(
-              lang.translate('new_this_month'),
-              '${_stats['newThisMonth'] ?? 0}',
-              Icons.trending_up,
-              Colors.orange,
-              isDark,
+            child: InkWell(
+              onTap: () => _switchTab(1),
+              borderRadius: BorderRadius.circular(12),
+              child: _buildStatCard(
+                lang.translate('new_this_month'),
+                '${_stats['newThisMonth'] ?? 0}',
+                Icons.trending_up,
+                Colors.orange,
+                isDark,
+              ),
             ),
           ),
         ],
@@ -413,7 +436,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     bool isDark,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
         color: isDark ? Colors.grey.shade800 : Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -426,23 +449,32 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 12),
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.black87,
             ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
             textAlign: TextAlign.center,
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -450,84 +482,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     );
   }
 
-  Widget _buildSearchSection(LanguageService lang, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            lang.translate('global_search'),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AdvancedSearchScreen(allMembers: _allMembers),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey.shade800 : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.shade300, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.search, color: Colors.blue.shade700, size: 28),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          lang.translate('search_members'),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${lang.translate('filter_by')}: ${lang.translate('blood_group')}, ${lang.translate('city')}, ${lang.translate('family')}...',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.blue.shade700,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildSectionHeader(
     String title,
@@ -539,43 +494,46 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   ) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: Colors.blue.shade900, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                child: Icon(icon, color: Colors.blue.shade900, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              if (onTap != null)
+                Icon(Icons.arrow_forward_ios, color: Colors.blue.shade700, size: 16),
+            ],
           ),
-          if (onTap != null)
-            IconButton(
-              icon: Icon(Icons.refresh, color: Colors.blue.shade700),
-              onPressed: onTap,
-              tooltip: lang.translate('refresh'),
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -620,140 +578,145 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     bool isDark,
     bool isSuggestion,
   ) {
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade800 : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Profile Image
-          Container(
-            height: 120,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
-              ),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.blue.shade400, Colors.blue.shade700],
-              ),
+    return InkWell(
+      onTap: () => _navigateToMember(member),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey.shade800 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Stack(
-              children: [
-                Center(
-                  child:
-                      member.photoUrl.isNotEmpty &&
-                          member.photoUrl.startsWith('http')
-                      ? ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(12),
-                          ),
-                          child: Image.network(
-                            member.photoUrl,
-                            width: double.infinity,
-                            height: 120,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _buildAvatarPlaceholder(member),
-                          ),
-                        )
-                      : _buildAvatarPlaceholder(member),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Profile Image
+            Container(
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
                 ),
-                if (isSuggestion)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome,
-                        color: Colors.white,
-                        size: 12,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // Member Info
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  member.fullName,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.blue.shade400, Colors.blue.shade700],
                 ),
-                const SizedBox(height: 4),
-                if (member.bloodGroup.isNotEmpty)
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.bloodtype,
-                        size: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        member.bloodGroup,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
+              ),
+              child: Stack(
+                children: [
+                  // ... Keep existing children ...
+                  Center(
+                    child:
+                        member.photoUrl.isNotEmpty &&
+                            member.photoUrl.startsWith('http')
+                        ? ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12),
+                            ),
+                            child: Image.network(
+                              member.photoUrl,
+                              width: double.infinity,
+                              height: 120,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _buildAvatarPlaceholder(member),
+                            ),
+                          )
+                        : _buildAvatarPlaceholder(member),
+                  ),
+                  if (isSuggestion)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome,
+                          color: Colors.white,
+                          size: 12,
                         ),
                       ),
-                    ],
+                    ),
+                ],
+              ),
+            ),
+            // Member Info
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    member.fullName,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                if (member.nativeHome.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          member.nativeHome,
+                  const SizedBox(height: 4),
+                  if (member.bloodGroup.isNotEmpty)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.bloodtype,
+                          size: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          member.bloodGroup,
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey.shade600,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  if (member.nativeHome.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          size: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            member.nativeHome,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -782,6 +745,8 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     );
   }
 
+
+
   Widget _buildCommunityActivity(LanguageService lang, bool isDark) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -803,6 +768,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
         }
 
         final events = snapshot.data!.docs;
+
         if (events.isEmpty) {
           return Container(
             margin: const EdgeInsets.all(16),
@@ -810,61 +776,298 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             decoration: BoxDecoration(
               color: isDark ? Colors.grey.shade800 : Colors.white,
               borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: Center(
-              child: Text(
-                lang.translate('no_events'),
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
+            child: Column(
+              children: [
+                Icon(Icons.event_busy, color: Colors.grey.shade400, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  lang.translate('no_events'),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
           );
         }
 
-        return Column(
-          children: events.map((doc) {
+        // Show recent events
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: events.length,
+          itemBuilder: (context, index) {
+            final doc = events[index];
             final data = doc.data() as Map<String, dynamic>;
-            final date = (data['date'] as dynamic)?.toDate();
+            final title = data['title'] ?? 'Event';
+            final date = (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
+
             return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: isDark ? Colors.grey.shade800 : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
+                border: Border.all(
+                  color: Colors.blue.withOpacity(0.3),
+                  width: 1,
+                ),
               ),
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
-                    borderRadius: BorderRadius.circular(8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          date.day.toString(),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade900,
+                          ),
+                        ),
+                        Text(
+                          _getMonth(date.month),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Icon(Icons.event, color: Colors.blue.shade900),
-                ),
-                title: Text(
-                  data['title'] ?? '',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${date.hour}:${date.minute.toString().padLeft(2, '0')}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                subtitle: date != null
-                    ? Text('${date.day}/${date.month}/${date.year}')
-                    : null,
-                trailing: Icon(
-                  Icons.chevron_right,
-                  color: Colors.grey.shade400,
-                ),
+                ],
               ),
             );
-          }).toList(),
+          },
         );
       },
+    );
+  }
+
+  String _getMonth(int month) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[month - 1];
+  }
+
+  Widget _buildManagerTools(LanguageService lang, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Manager Tools',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildManagerToolCard(
+                  icon: Icons.notifications_active,
+                  label: lang.translate('notifications'),
+                  color: Colors.redAccent,
+                  isDark: isDark,
+                  onTap: () => Navigator.pushNamed(context, '/admin/notifications'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildManagerToolCard(
+                  icon: Icons.event,
+                  label: lang.translate('events'),
+                  color: Colors.blueAccent,
+                  isDark: isDark,
+                  onTap: () => Navigator.pushNamed(context, '/admin/events'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildManagerToolCard(
+                  icon: Icons.family_restroom,
+                  label: lang.translate('families'),
+                  color: Colors.purple,
+                  isDark: isDark,
+                  onTap: () => Navigator.pushNamed(context, '/admin/families'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildManagerToolCard(
+                  icon: Icons.groups,
+                  label: lang.translate('groups'),
+                  color: Colors.green,
+                  isDark: isDark,
+                  onTap: () => Navigator.pushNamed(context, '/admin/groups'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManagerToolCard({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey.shade800 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildFamilyStats(LanguageService lang, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade800 : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => _switchTab(1), // Switch to Connect tab
+        borderRadius: BorderRadius.circular(12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildSmallStat(lang.translate('families'), '${_stats['totalFamilies'] ?? 0}', Colors.purple),
+            _buildSmallStat(lang.translate('members'), '${_stats['total'] ?? 0}', Colors.blue),
+            _buildSmallStat(lang.translate('groups'), '${_stats['totalGroups'] ?? 0}', Colors.green),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSmallStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
     );
   }
 }

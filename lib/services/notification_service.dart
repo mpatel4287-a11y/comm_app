@@ -16,6 +16,7 @@ class NotificationService {
     required String targetType,
     String? targetId,
     required String createdBy,
+    DateTime? expiresAt,
   }) async {
     final notificationRef = _firestore.collection('notifications').doc();
 
@@ -28,6 +29,7 @@ class NotificationService {
       targetId: targetId,
       createdAt: DateTime.now(),
       createdBy: createdBy,
+      expiresAt: expiresAt,
     );
 
     await notificationRef.set(notification.toMap());
@@ -75,22 +77,44 @@ class NotificationService {
   }
 
   // ---------------- STREAM NOTIFICATIONS FOR USER ----------------
+  // ---------------- STREAM NOTIFICATIONS FOR USER ----------------
   Stream<List<NotificationModel>> streamUserNotifications(String familyDocId) {
+    // Phase 2: Show all notifications, filter expired ones client-side
+    // Do NOT filter by isRead in query anymore
     return _firestore
         .collection('notifications')
-        .where('isRead', isEqualTo: false)
         .snapshots()
         .map((snap) {
+          final now = DateTime.now();
           return snap.docs
               .where((doc) {
                 final data = doc.data();
                 final targetType = data['targetType'] as String;
                 final targetId = data['targetId'] as String?;
+                final expiresAtTimestamp = data['expiresAt'] as Timestamp?;
+                
+                // 1. Check target
+                bool isTarget = false;
+                if (targetType == 'all') {
+                  isTarget = true;
+                } else if (targetType == 'family' && targetId == familyDocId) {
+                  isTarget = true;
+                }
+                if (!isTarget) return false;
 
-                if (targetType == 'all') return true;
-                if (targetType == 'family' && targetId == familyDocId)
-                  return true;
-                return false;
+                // 2. Check Expiry
+                if (expiresAtTimestamp != null) {
+                  final expiresAt = expiresAtTimestamp.toDate();
+                  if (now.isAfter(expiresAt)) return false;
+                }
+
+                // 3. Fallback: If no expiry, maybe default to 7 days? 
+                // For now, if no expiry, we keep it forever unless manually deleted by admin?
+                // Or maybe default to 7 days from creation if not specified? 
+                // Let's stick to explicit expiry or keep it.
+                // NOTE: User asked to "delete notification from notification screen after the date ends"
+                
+                return true;
               })
               .map((doc) => NotificationModel.fromMap(doc.id, doc.data()))
               .toList();

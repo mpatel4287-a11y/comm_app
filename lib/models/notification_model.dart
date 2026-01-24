@@ -10,6 +10,7 @@ class NotificationModel {
   final bool isRead;
   final DateTime createdAt;
   final String createdBy;
+  final DateTime? expiresAt;
 
   NotificationModel({
     required this.id,
@@ -21,6 +22,7 @@ class NotificationModel {
     this.isRead = false,
     required this.createdAt,
     required this.createdBy,
+    this.expiresAt,
   });
 
   // ---------------- TO MAP ----------------
@@ -34,6 +36,7 @@ class NotificationModel {
       'isRead': isRead,
       'createdAt': createdAt,
       'createdBy': createdBy,
+      'expiresAt': expiresAt,
     };
   }
 
@@ -49,6 +52,7 @@ class NotificationModel {
       isRead: data['isRead'] ?? false,
       createdAt: (data['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
       createdBy: data['createdBy'] ?? '',
+      expiresAt: (data['expiresAt'] as dynamic)?.toDate(),
     );
   }
 }

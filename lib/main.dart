@@ -17,12 +17,13 @@ import 'screens/admin/system_health_screen.dart';
 import 'screens/admin/notification_center_screen.dart';
 import 'screens/user/digital_id_screen.dart';
 import 'models/member_model.dart';
-import 'user/user_dashboard.dart';
 import 'screens/user/settings_screen.dart';
 import 'screens/user/member_detail_screen.dart';
 import 'screens/user/user_profile_screen.dart';
 import 'screens/user/enhanced_user_dashboard.dart';
 import 'screens/user/user_notification_screen.dart';
+import 'screens/user/user_calendar_screen.dart';
+import 'screens/user/user_search_tab.dart';
 import 'services/session_manager.dart';
 import 'services/theme_service.dart';
 import 'services/language_service.dart';
@@ -92,13 +93,14 @@ class _InitialRouteState extends State<InitialRoute> {
     // Check for existing session
     final hasSession = await SessionManager.hasSession();
     final isAdmin = await SessionManager.getIsAdmin();
-    final role = await SessionManager.getRole();
+    await SessionManager.getRole();
 
     if (mounted) {
       // Navigate based on role/admin status
-      if (hasSession && (isAdmin == true || role == 'manager')) {
+      if (hasSession && isAdmin == true) {
         Navigator.pushReplacementNamed(context, '/admin');
       } else if (hasSession) {
+        // Manager also goes here now
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         Navigator.pushReplacementNamed(context, '/login');
