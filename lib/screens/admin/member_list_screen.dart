@@ -1662,7 +1662,7 @@ class _MemberListScreenState extends State<MemberListScreen>
         title: Text(widget.showOnlyManagers ? lang.translate('managers') : widget.familyName),
         backgroundColor: Colors.blue.shade900,
         actions: [
-          if (!widget.isGlobal && _userRole != 'manager')
+          if (!widget.isGlobal && _userRole == 'admin')
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () {
@@ -1902,31 +1902,44 @@ class _MemberListScreenState extends State<MemberListScreen>
 
                               const Spacer(),
 
-                              // ACTIONS
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: [
-                                  // EDIT
-                                  _buildCompactAction(
-                                    icon: Icons.edit,
-                                    color: Colors.blue,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => EditMemberScreen(
-                                            memberId: doc.id,
-                                            familyDocId: widget.familyDocId ?? data['familyDocId'],
-                                            subFamilyDocId: widget.subFamilyDocId ?? data['subFamilyDocId'],
+                               // ACTIONS
+                              if (_userRole == 'admin')
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    // EDIT
+                                    _buildCompactAction(
+                                      icon: Icons.edit,
+                                      color: Colors.blue,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => EditMemberScreen(
+                                              memberId: doc.id,
+                                              familyDocId: widget.familyDocId ?? data['familyDocId'],
+                                              subFamilyDocId: widget.subFamilyDocId ?? data['subFamilyDocId'],
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                        );
+                                      },
+                                    ),
+  
+                                    // BLOCK / UNBLOCK
+                                    _buildCompactAction(
+                                      icon: isActive ? Icons.block : Icons.lock_open,
+                                      color: isActive ? Colors.orange : Colors.green,
+                                      onTap: () async {
+                                        await MemberService().toggleMemberStatus(
+                                          mainFamilyDocId: widget.familyDocId ?? data['familyDocId'] ?? '',
+                                          subFamilyDocId: widget.subFamilyDocId ?? data['subFamilyDocId'] ?? '',
+                                          memberId: doc.id,
+                                        );
+                                      },
+                                    ),
 
-                                  // DELETE
-                                  if (_userRole != 'manager')
+                                    // DELETE
                                     _buildCompactAction(
                                       icon: Icons.delete,
                                       color: Colors.red,
@@ -1965,8 +1978,8 @@ class _MemberListScreenState extends State<MemberListScreen>
                                         }
                                       },
                                     ),
-                                ],
-                              ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
@@ -1979,7 +1992,7 @@ class _MemberListScreenState extends State<MemberListScreen>
           ),
         ],
       ),
-      floatingActionButton: (widget.isGlobal || _userRole == 'manager')
+      floatingActionButton: (widget.isGlobal || _userRole != 'admin')
           ? null
           : FloatingActionButton(
               backgroundColor: Colors.blue.shade900,

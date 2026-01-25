@@ -9,8 +9,9 @@ import '../../services/language_service.dart';
 import '../../services/theme_service.dart';
 import 'package:provider/provider.dart';
 import '../../services/session_manager.dart';
-import '../admin/member_list_screen.dart';
+import '../admin/member_list_screen.dart'; // Correctly import Add/Edit screens from here
 import 'member_detail_screen.dart';
+
 
 /// Represents a unit in the tree: either a single person or a married couple
 class TreeEntity {
@@ -55,11 +56,14 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
   double _treeWidth = 0;
   double _treeHeight = 0;
 
-  static const double nodeWidth = 140.0;
-  static const double nodeHeight = 160.0; // Taller for the image-style node
-  static const double horizontalPadding = 40.0;
-  static const double verticalPadding = 120.0;
-  static const double coupleSpacing = 20.0;
+  // Layout configuration (Exactly matching Image 3 proportions)
+  double _nodeWidth = 85.0;
+  double _nodeHeight = 90.0; // Base height, will grow if needed
+  double _horizontalPadding = 20.0;
+  double _verticalPadding = 60.0;
+  double _coupleSpacing = 10.0;
+
+
 
   @override
   void initState() {
@@ -68,7 +72,8 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
   }
 
   Future<void> _loadData() async {
-    final isAdmin = await SessionManager.getIsAdmin() ?? false;
+    final role = await SessionManager.getRole();
+    final isAdmin = role == 'admin';
     final userSubFamilyId = await SessionManager.getSubFamilyDocId();
 
     if (mounted) {
@@ -83,15 +88,18 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
 
     _memberService.streamAllMembers().listen((members) {
       if (mounted) {
+        final familyMembers = members
+            .where((m) => m.familyDocId == widget.mainFamilyDocId)
+            .toList();
         setState(() {
-          _members = members
-              .where((m) => m.familyDocId == widget.mainFamilyDocId)
-              .toList();
+          _members = familyMembers;
           _loading = false;
           _calculateLayout();
         });
+
       }
     });
+
   }
 
   void _calculateLayout() {
@@ -127,31 +135,48 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
 
     // 2. Build Hierarchy
     for (var entity in entityMap.values) {
-      // A child's parentMid refers to the HUSBAND (primary) in our logic
+      // Find children who have this person as parentMid
       final directChildren = entityMap.values.where((e) => e.primary.parentMid == entity.primary.mid).toList();
       
-      // Joint logic: Sub-family bridge
+      // Bridge logic for sub-families if parentMid is missing but they are marked as having a relation to main head
       final isMainHead = entity.primary.relationToHead == 'head' && (entity.primary.subFamilyDocId.isEmpty || entity.primary.subFamilyDocId == 'null');
+      
       final bridgedHeads = (_isWholeFamily && isMainHead)
-          ? entityMap.values.where((e) => e.primary.relationToHead == 'head' && e.primary.subFamilyHeadRelationToMainHead.isNotEmpty).toList()
+          ? entityMap.values.where((e) {
+              final isRelatedHead = e.primary.relationToHead == 'head' && e.primary.subFamilyHeadRelationToMainHead.isNotEmpty;
+              // Only bridge if they don't already have a parent in the set (don't over-bridge if data has parentMid)
+              final hasNoParent = e.primary.parentMid.isEmpty || !entityMap.containsKey(e.primary.parentMid);
+              return isRelatedHead && hasNoParent;
+            }).toList()
           : <TreeEntity>[];
 
       entity.children.addAll([...directChildren, ...bridgedHeads]);
     }
 
-    // 3. Select Roots based on view mode
+
+    // 3. Select Roots based on view mode (Image 3 logic: only main ancestors at top)
     if (_isWholeFamily) {
+      final allMids = entityMap.values.map((e) => e.primary.mid).toSet();
       _rootEntities.addAll(entityMap.values.where((e) {
-        final isMainHead = e.primary.relationToHead == 'head' && (e.primary.subFamilyDocId.isEmpty || e.primary.subFamilyDocId == 'null');
-        final hasNoParent = e.primary.parentMid.isEmpty;
-        return isMainHead || (hasNoParent && e.primary.relationToHead == 'head');
+        // A root criteria: 
+        // 1. Their parentMid is NOT in our set. 
+        // 2. AND (they are marked as 'head' OR they have no parents at all).
+        final hasNoParentInSet = e.primary.parentMid.isEmpty || !allMids.contains(e.primary.parentMid);
+        
+        // Fix: If they are a 'wife' but their husband is in the set, she's NOT a root (she's grouped).
+        // If they are a 'daughter' and their parent IS in the set, they are NOT a root.
+        final shouldBeChild = !hasNoParentInSet;
+
+        return !shouldBeChild && (e.primary.relationToHead == 'head' || e.primary.parentMid.isEmpty);
       }));
     } else {
+
       final targetSubFamilyDocId = widget.subFamilyDocId ?? _userSubFamilyId;
       if (targetSubFamilyDocId != null) {
         _rootEntities.addAll(entityMap.values.where((e) => e.primary.subFamilyDocId == targetSubFamilyDocId && (e.primary.relationToHead == 'head' || e.primary.parentMid.isEmpty)));
       }
     }
+
 
     if (_rootEntities.isEmpty && entityMap.isNotEmpty) {
       _rootEntities.add(entityMap.values.first);
@@ -160,14 +185,14 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
     // 4. Recursive Positioning
     double currentX = 50;
     for (var root in _rootEntities) {
-      currentX += _positionEntity(root, 0, currentX) + horizontalPadding;
+      currentX += _positionEntity(root, 0, currentX) + _horizontalPadding;
     }
 
     // Bounds
     double maxX = 0, maxY = 0;
     for (var e in entityMap.values) {
-      final x = e.position.dx + (e.isCouple ? nodeWidth * 2 + coupleSpacing : nodeWidth);
-      final y = e.position.dy + nodeHeight;
+      final x = e.position.dx + (e.isCouple ? _nodeWidth * 2 + _coupleSpacing : _nodeWidth);
+      final y = e.position.dy + _nodeHeight;
       if (x > maxX) maxX = x;
       if (y > maxY) maxY = y;
     }
@@ -178,24 +203,25 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
   double _positionEntity(TreeEntity entity, int level, double startX) {
     double childrenWidth = 0;
     if (entity.children.isEmpty) {
-      childrenWidth = entity.isCouple ? nodeWidth * 2 + coupleSpacing : nodeWidth;
+      childrenWidth = entity.isCouple ? _nodeWidth * 2 + _coupleSpacing : _nodeWidth;
     } else {
       double childX = startX;
       for (var child in entity.children) {
-        childrenWidth += _positionEntity(child, level + 1, childX) + horizontalPadding;
+        childrenWidth += _positionEntity(child, level + 1, childX) + _horizontalPadding;
         childX = startX + childrenWidth;
       }
-      childrenWidth -= horizontalPadding;
+      childrenWidth -= _horizontalPadding;
     }
 
-    double entityWidth = entity.isCouple ? nodeWidth * 2 + coupleSpacing : nodeWidth;
+    double entityWidth = entity.isCouple ? _nodeWidth * 2 + _coupleSpacing : _nodeWidth;
     double x = startX + (childrenWidth / 2) - (entityWidth / 2);
-    double y = 50.0 + level * (nodeHeight + verticalPadding);
+    double y = 50.0 + level * (_nodeHeight + _verticalPadding);
 
     entity.position = Offset(x, y);
     entity.subtreeWidth = childrenWidth;
     return childrenWidth;
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -212,6 +238,19 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
         body: const Center(child: CircularProgressIndicator()),
       );
     }
+
+    final textScale = MediaQuery.textScalerOf(context).scale(1.0);
+    
+    // Scale dimensions slightly but keep them compact
+    _nodeWidth = (85.0 * textScale.clamp(1.0, 1.2));
+    _nodeHeight = (90.0 + (_isAdmin ? 30.0 : 0)) * textScale; 
+    _horizontalPadding = 20.0 * textScale;
+    _verticalPadding = 60.0 * textScale;
+    _coupleSpacing = 10.0 * textScale;
+
+
+    // Recalculate layout with new dimensions
+    _calculateLayout();
 
     return Scaffold(
       backgroundColor: isDark ? Colors.grey.shade900 : Colors.grey.shade100,
@@ -241,18 +280,28 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
               child: SizedBox(
                 width: _treeWidth,
                 height: _treeHeight,
-                child: Stack(
-                  children: [
-                    CustomPaint(
-                      size: Size(_treeWidth, _treeHeight),
-                      painter: ForkLinePainter(rootEntities: _rootEntities, nodeWidth: nodeWidth, nodeHeight: nodeHeight, coupleSpacing: coupleSpacing),
-                    ),
-                    ..._buildEntityWidgets(lang, isDark),
-                  ],
+                child: RepaintBoundary(
+                  child: Stack(
+                    children: [
+                      CustomPaint(
+                        size: Size(_treeWidth, _treeHeight),
+                        painter: ForkLinePainter(
+                          rootEntities: _rootEntities,
+                          nodeWidth: _nodeWidth,
+                          nodeHeight: _nodeHeight,
+                          coupleSpacing: _coupleSpacing,
+                          verticalPadding: _verticalPadding,
+                        ),
+                      ),
+
+                      ..._buildEntityWidgets(lang, isDark),
+                    ],
+                  ),
                 ),
               ),
             ),
     );
+
   }
 
   List<Widget> _buildEntityWidgets(LanguageService lang, bool isDark) {
@@ -268,11 +317,12 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
       // Spouse Node
       if (e.spouse != null) {
         widgets.add(Positioned(
-          left: e.position.dx + nodeWidth + coupleSpacing,
+          left: e.position.dx + _nodeWidth + _coupleSpacing,
           top: e.position.dy,
           child: _buildMemberNode(e.spouse!, lang, isDark),
         ));
       }
+
 
       for (var child in e.children) {
         traverse(child);
@@ -290,71 +340,89 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
     final Color themeColor = isFemale ? Colors.pink.shade400 : Colors.blue.shade600;
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MemberDetailScreen(memberId: member.id))),
       child: Container(
-        width: nodeWidth,
-        height: nodeHeight,
+        width: _nodeWidth,
+        constraints: BoxConstraints(minHeight: _nodeHeight),
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey.shade800 : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+          color: isDark ? Colors.grey.shade900 : Colors.white,
+          borderRadius: BorderRadius.circular(2), // Match Image 3 sharp corners
+          border: Border.all(color: Colors.grey.shade400, width: 0.5),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 1, offset: const Offset(0, 1))],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Top Accent Bar
-            Container(height: 4, decoration: BoxDecoration(color: themeColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(8)))),
-            const SizedBox(height: 12),
-            // Profile Image (Matches reference)
+            // Top Accent Bar (Strictly matching Image 3)
+            Container(height: 2, decoration: BoxDecoration(color: themeColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(2)))),
+            const SizedBox(height: 4),
+            // Profile Image (Matches Image 3 proportions)
             Container(
-              width: 70,
-              height: 70,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade300, width: 2),
+                border: Border.all(color: Colors.grey.shade300, width: 1),
                 image: member.photoUrl.isNotEmpty 
                   ? DecorationImage(image: NetworkImage(member.photoUrl), fit: BoxFit.cover)
                   : null,
               ),
               child: member.photoUrl.isEmpty 
-                ? Icon(Icons.person, size: 40, color: Colors.grey.shade400)
+                ? Icon(Icons.person, size: 24, color: Colors.grey.shade300)
                 : null,
             ),
-            const SizedBox(height: 12),
-            // Name
+            const SizedBox(height: 4),
+            // Info Section - Use Flexible/Wrap to avoid overflow
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                member.fullName,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    member.fullName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 8.5, height: 1.1),
+                    textAlign: TextAlign.center,
+                    maxLines: 2, // Allow 2 lines for long names
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'Born: ${member.birthDate.split("/").last}', // Mocking Image 3 style
+                    style: const TextStyle(fontSize: 7, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 1),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '(${lang.translate(member.relationToHead)})',
+                      style: TextStyle(fontSize: 7, color: themeColor, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Spacer(),
-            // Born Year
-            Text(
-              member.birthDate.isNotEmpty ? 'Born: ${member.birthDate.split('/').last}' : '',
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 8),
-            // Admin Actions
-            if (_isAdmin) 
-               Container(
-                 decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8))),
+            if (_isAdmin) ...[
+              const Spacer(),
+              Container(
+                 padding: const EdgeInsets.symmetric(vertical: 2),
+                 color: Colors.grey.shade100,
                  child: Row(
                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                    children: [
-                     IconButton(icon: Icon(Icons.person_add, size: 16, color: Colors.green.shade700), onPressed: () => _navToAddChild(member), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-                     IconButton(icon: Icon(Icons.edit, size: 16, color: Colors.blue.shade700), onPressed: () => _navToEdit(member), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-                     IconButton(icon: Icon(Icons.delete, size: 16, color: Colors.red.shade700), onPressed: () => _confirmDelete(context, member), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                     InkWell(onTap: () => _navToAddChild(member), child: Icon(Icons.add_circle_outline, size: 12, color: Colors.green.shade700)),
+                     InkWell(onTap: () => _navToEdit(member), child: Icon(Icons.edit, size: 12, color: Colors.blue.shade700)),
+                     InkWell(onTap: () => _confirmDelete(context, member), child: Icon(Icons.delete_forever, size: 12, color: Colors.red.shade700)),
                    ],
                  ),
                ),
+            ],
           ],
         ),
       ),
     );
+
+
   }
 
   void _navToAddChild(MemberModel m) {
@@ -387,17 +455,27 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
 class ForkLinePainter extends CustomPainter {
   final List<TreeEntity> rootEntities;
   final double nodeWidth;
+
   final double nodeHeight;
   final double coupleSpacing;
+  final double verticalPadding;
 
-  ForkLinePainter({required this.rootEntities, required this.nodeWidth, required this.nodeHeight, required this.coupleSpacing});
+  ForkLinePainter({
+    required this.rootEntities,
+    required this.nodeWidth,
+    required this.nodeHeight,
+    required this.coupleSpacing,
+    required this.verticalPadding,
+  });
+
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = Colors.grey.shade400
-      ..strokeWidth = 1.5
+      ..strokeWidth = 1.0 // Strictly matching Image 3 (thinner lines)
       ..style = PaintingStyle.stroke;
+
 
     void drawLines(TreeEntity e) {
       double parentCenterX = e.position.dx + (e.isCouple ? (nodeWidth * 2 + coupleSpacing) / 2 : nodeWidth / 2);
@@ -411,21 +489,28 @@ class ForkLinePainter extends CustomPainter {
 
       if (e.children.isNotEmpty) {
         // Vertical line down from parents
-        final forkY = parentBottomY + 40;
+        final forkY = parentBottomY + (verticalPadding / 2); 
         canvas.drawLine(Offset(parentCenterX, parentBottomY), Offset(parentCenterX, forkY), paint);
+
 
         // Horizontal span
         double firstChildX = e.children.first.position.dx + (e.children.first.isCouple ? (nodeWidth * 2 + coupleSpacing) / 2 : nodeWidth / 2);
         double lastChildX = e.children.last.position.dx + (e.children.last.isCouple ? (nodeWidth * 2 + coupleSpacing) / 2 : nodeWidth / 2);
-        canvas.drawLine(Offset(firstChildX, forkY), Offset(lastChildX, forkY), paint);
+        
+        if (e.children.length > 1) {
+          canvas.drawLine(Offset(firstChildX, forkY), Offset(lastChildX, forkY), paint);
+        }
 
         // Vertical lines to each child
         for (var child in e.children) {
           double childCenterX = child.position.dx + (child.isCouple ? (nodeWidth * 2 + coupleSpacing) / 2 : nodeWidth / 2);
+          // Line from fork to child top
           canvas.drawLine(Offset(childCenterX, forkY), Offset(childCenterX, child.position.dy), paint);
           drawLines(child);
         }
       }
+
+
     }
 
     for (var root in rootEntities) {

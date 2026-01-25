@@ -138,7 +138,10 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
     final theme = Provider.of<ThemeService>(context);
     final isDark = theme.isDarkMode;
 
-    return Column(
+    return Scaffold(
+      backgroundColor: isDark ? Colors.grey.shade900 : Colors.grey.shade100,
+      body: Column(
+
       children: [
         const SizedBox(height: 24), // Move content down
         // Filter Header (Moved from AppBar actions to body)
@@ -301,8 +304,17 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
                   ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.pushNamed(context, '/user/qr-scanner'),
+        backgroundColor: Colors.blue.shade900,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.qr_code_scanner),
+      ),
+
     );
   }
+
 
   Widget _buildFilterChip(
     String label,

@@ -1,17 +1,33 @@
 // lib/screens/user/digital_id_screen.dart
 
 import 'dart:convert';
+import 'dart:ui' as ui;
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:gal/gal.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/member_model.dart';
 import '../../services/language_service.dart';
 
-class DigitalIdScreen extends StatelessWidget {
+class DigitalIdScreen extends StatefulWidget {
   final MemberModel member;
 
   const DigitalIdScreen({super.key, required this.member});
+
+  @override
+  State<DigitalIdScreen> createState() => _DigitalIdScreenState();
+}
+
+class _DigitalIdScreenState extends State<DigitalIdScreen> {
+  final GlobalKey _boundaryKey = GlobalKey();
+  bool _isSharing = false;
+
 
   @override
   Widget build(BuildContext context) {
@@ -25,12 +41,20 @@ class DigitalIdScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share_rounded),
-            onPressed: () => _shareCard(member, lang),
-          ),
+          if (!_isSharing) ...[
+            IconButton(
+              icon: const Icon(Icons.download_rounded),
+              onPressed: () => _saveToGallery(lang),
+            ),
+            IconButton(
+              icon: const Icon(Icons.share_rounded),
+              onPressed: () => _shareCardAsImage(lang),
+            ),
+          ],
         ],
       ),
+
+
       extendBodyBehindAppBar: true,
       body: Container(
         width: double.infinity,
@@ -50,9 +74,13 @@ class DigitalIdScreen extends StatelessWidget {
               children: [
                 const SizedBox(height: 20),
                 // THE ID CARD
-                _buildIdCard(context, lang, theme),
+                RepaintBoundary(
+                  key: _boundaryKey,
+                  child: _buildIdCard(context, lang, theme),
+                ),
                 
                 const SizedBox(height: 40),
+
                 
                 Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -115,7 +143,8 @@ class DigitalIdScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        member.familyName.toUpperCase(),
+                        widget.member.familyName.toUpperCase(),
+
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -155,14 +184,14 @@ class DigitalIdScreen extends StatelessWidget {
                         offset: const Offset(0, 4),
                       ),
                     ],
-                    image: member.photoUrl.isNotEmpty
+                    image: widget.member.photoUrl.isNotEmpty
                         ? DecorationImage(
-                            image: NetworkImage(member.photoUrl),
+                            image: NetworkImage(widget.member.photoUrl),
                             fit: BoxFit.cover,
                           )
                         : null,
                   ),
-                  child: member.photoUrl.isEmpty
+                  child: widget.member.photoUrl.isEmpty
                       ? Icon(Icons.person, size: 60, color: theme.colorScheme.primary)
                       : null,
                 ),
@@ -171,7 +200,7 @@ class DigitalIdScreen extends StatelessWidget {
                 
                 // Name and MID
                 Text(
-                  member.fullName,
+                  widget.member.fullName,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -179,9 +208,10 @@ class DigitalIdScreen extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                if (member.surname.isNotEmpty)
+                if (widget.member.surname.isNotEmpty)
                   Text(
-                    member.surname,
+                    widget.member.surname,
+
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey.shade600,
@@ -196,7 +226,8 @@ class DigitalIdScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'MID: ${member.mid}',
+                    'MID: ${widget.member.mid}',
+
                     style: TextStyle(
                       fontSize: 14,
                       color: theme.colorScheme.primary,
@@ -212,6 +243,8 @@ class DigitalIdScreen extends StatelessWidget {
                 
                 // Details Grid
                 _buildDetailsSection(lang),
+
+
                 
                 const SizedBox(height: 20),
                 Divider(color: Colors.grey.shade300),
@@ -230,13 +263,14 @@ class DigitalIdScreen extends StatelessWidget {
                       QrImageView(
                         data: jsonEncode({
                           'type': 'member',
-                          'mid': member.mid,
-                          'memberId': member.id,
-                          'familyDocId': member.familyDocId,
-                          'subFamilyDocId': member.subFamilyDocId,
-                          'fullName': member.fullName,
-                          'phone': member.phone,
+                          'mid': widget.member.mid,
+                          'memberId': widget.member.id,
+                          'familyDocId': widget.member.familyDocId,
+                          'subFamilyDocId': widget.member.subFamilyDocId,
+                          'fullName': widget.member.fullName,
+                          'phone': widget.member.phone,
                         }),
+
                         version: QrVersions.auto,
                         size: 140.0,
                         eyeStyle: QrEyeStyle(
@@ -279,7 +313,7 @@ class DigitalIdScreen extends StatelessWidget {
             Expanded(
               child: _buildDetailItem(
                 lang.translate('blood_group'),
-                member.bloodGroup.isNotEmpty ? member.bloodGroup : '-',
+                widget.member.bloodGroup.isNotEmpty ? widget.member.bloodGroup : '-',
                 Icons.bloodtype,
               ),
             ),
@@ -287,7 +321,7 @@ class DigitalIdScreen extends StatelessWidget {
             Expanded(
               child: _buildDetailItem(
                 lang.translate('birth_date'),
-                member.birthDate.isNotEmpty ? member.birthDate : '-',
+                widget.member.birthDate.isNotEmpty ? widget.member.birthDate : '-',
                 Icons.cake,
               ),
             ),
@@ -301,7 +335,7 @@ class DigitalIdScreen extends StatelessWidget {
             Expanded(
               child: _buildDetailItem(
                 lang.translate('father_name'),
-                member.fatherName.isNotEmpty ? member.fatherName : '-',
+                widget.member.fatherName.isNotEmpty ? widget.member.fatherName : '-',
                 Icons.person,
               ),
             ),
@@ -309,7 +343,7 @@ class DigitalIdScreen extends StatelessWidget {
             Expanded(
               child: _buildDetailItem(
                 lang.translate('mother_name'),
-                member.motherName.isNotEmpty ? member.motherName : '-',
+                widget.member.motherName.isNotEmpty ? widget.member.motherName : '-',
                 Icons.person_outline,
               ),
             ),
@@ -317,26 +351,27 @@ class DigitalIdScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         
-        // Row 3: Gotra & Education
+        // Row 3: Age & Education
         Row(
           children: [
             Expanded(
               child: _buildDetailItem(
-                lang.translate('gotra'),
-                member.gotra.isNotEmpty ? member.gotra : '-',
-                Icons.family_restroom,
+                lang.translate('age'),
+                '${widget.member.age} ${lang.translate('years')}',
+                Icons.cake,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _buildDetailItem(
                 lang.translate('education'),
-                member.education.isNotEmpty ? member.education : '-',
+                widget.member.education.isNotEmpty ? widget.member.education : '-',
                 Icons.school,
               ),
             ),
           ],
         ),
+
         const SizedBox(height: 12),
         
         // Row 4: Native Home & Marriage Status
@@ -345,7 +380,7 @@ class DigitalIdScreen extends StatelessWidget {
             Expanded(
               child: _buildDetailItem(
                 lang.translate('native_home'),
-                member.nativeHome.isNotEmpty ? member.nativeHome : '-',
+                widget.member.nativeHome.isNotEmpty ? widget.member.nativeHome : '-',
                 Icons.home,
               ),
             ),
@@ -353,7 +388,7 @@ class DigitalIdScreen extends StatelessWidget {
             Expanded(
               child: _buildDetailItem(
                 lang.translate('marriage_status'),
-                lang.translate(member.marriageStatus),
+                lang.translate(widget.member.marriageStatus),
                 Icons.favorite,
               ),
             ),
@@ -367,7 +402,7 @@ class DigitalIdScreen extends StatelessWidget {
             Expanded(
               child: _buildDetailItem(
                 lang.translate('phone'),
-                member.phone.isNotEmpty ? member.phone : '-',
+                widget.member.phone.isNotEmpty ? widget.member.phone : '-',
                 Icons.phone,
               ),
             ),
@@ -375,16 +410,17 @@ class DigitalIdScreen extends StatelessWidget {
             Expanded(
               child: _buildDetailItem(
                 lang.translate('address'),
-                member.address.isNotEmpty
-                    ? (member.address.length > 20
-                        ? '${member.address.substring(0, 20)}...'
-                        : member.address)
+                widget.member.address.isNotEmpty
+                    ? (widget.member.address.length > 20
+                        ? '${widget.member.address.substring(0, 20)}...'
+                        : widget.member.address)
                     : '-',
                 Icons.location_on,
               ),
             ),
           ],
         ),
+
       ],
     );
   }
@@ -433,12 +469,76 @@ class DigitalIdScreen extends StatelessWidget {
     );
   }
 
-  void _shareCard(MemberModel member, LanguageService lang) {
-    final text = '${lang.translate('digital_id')}\n'
-        '${lang.translate('member_profile')}: ${member.fullName}\n'
-        'MID: ${member.mid}\n'
-        '${lang.translate('family_id')}: ${member.familyName}\n'
-        '${lang.translate('phone')}: ${member.phone}';
-    Share.share(text);
+  Future<String?> _captureImage() async {
+    try {
+      final RenderRepaintBoundary boundary = _boundaryKey.currentContext!
+          .findRenderObject() as RenderRepaintBoundary;
+      
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      
+      if (byteData == null) return null;
+
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
+
+      final tempDir = await getTemporaryDirectory();
+      final path = '${tempDir.path}/digital_id_${widget.member.mid}.png';
+      final file = await File(path).create();
+      await file.writeAsBytes(pngBytes);
+      return path;
+    } catch (e) {
+      debugPrint('Error capturing image: $e');
+      return null;
+    }
+  }
+
+  Future<void> _saveToGallery(LanguageService lang) async {
+    setState(() => _isSharing = true);
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    final path = await _captureImage();
+    if (path != null) {
+      try {
+        final hasAccess = await Gal.hasAccess();
+        if (!hasAccess) {
+          await Gal.requestAccess();
+        }
+        await Gal.putImage(path);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Saved to Gallery!'), backgroundColor: Colors.green),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+    
+    if (mounted) {
+      setState(() => _isSharing = false);
+    }
+  }
+
+  Future<void> _shareCardAsImage(LanguageService lang) async {
+    setState(() => _isSharing = true);
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    final path = await _captureImage();
+    if (path != null) {
+      await Share.shareXFiles(
+        [XFile(path)],
+        text: '${lang.translate('digital_id')} - ${widget.member.fullName}',
+      );
+    }
+    
+    if (mounted) {
+      setState(() => _isSharing = false);
+    }
   }
 }
+
+

@@ -10,6 +10,8 @@ import '../../services/member_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/theme_service.dart';
 import '../../services/language_service.dart';
+import '../../services/notification_service.dart';
+
 
 import 'family_tree_view.dart';
 import 'member_detail_screen.dart';
@@ -17,6 +19,7 @@ import 'user_calendar_screen.dart';
 import 'user_notification_screen.dart';
 import 'settings_screen.dart';
 import 'user_search_tab.dart'; 
+import '../admin/family_list_screen.dart';
 import 'dart:math';
 
 class EnhancedUserDashboard extends StatefulWidget {
@@ -28,7 +31,9 @@ class EnhancedUserDashboard extends StatefulWidget {
 
 class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   final MemberService _memberService = MemberService();
+  final NotificationService _notificationService = NotificationService();
   final ScrollController _scrollController = ScrollController();
+
 
   List<MemberModel> _allMembers = [];
   List<MemberModel> _randomSuggestions = [];
@@ -42,7 +47,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
 
   MemberModel? _currentUser;
   String? _userRole;
-  int _selectedIndex = 0; // Tab Index
+  int _selectedIndex = 2; // Default to HOME tab
 
   @override
   void initState() {
@@ -100,15 +105,48 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   }
 
   void _setupLiveUpdates() {
-    // Live stream for new members
+    // Live stream for members
     _memberService.streamAllMembers().listen((members) {
       if (mounted) {
         setState(() {
           _allMembers = members;
           _generateRandomSuggestions();
           _loadNewMembers();
+          _calculateStats();
         });
       }
+    });
+
+    // Live stream for families
+    FirebaseFirestore.instance.collection('families').where('isAdmin', isEqualTo: false).snapshots().listen((snap) {
+      if (mounted) {
+        setState(() {
+          _stats['totalFamilies'] = snap.docs.length;
+        });
+      }
+    });
+  }
+
+  void _calculateStats() {
+    if (_allMembers.isEmpty) return;
+
+    final total = _allMembers.length;
+    final active = _allMembers.where((m) => m.isActive).length;
+    
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final newThisMonth = _allMembers.where((m) => m.createdAt.isAfter(startOfMonth)).length;
+
+    int myFamilyCount = 0;
+    if (_familyDocId != null) {
+      myFamilyCount = _allMembers.where((m) => m.familyDocId == _familyDocId).length;
+    }
+
+    setState(() {
+      _stats['total'] = total;
+      _stats['active'] = active;
+      _stats['newThisMonth'] = newThisMonth;
+      _stats['myFamilyCount'] = myFamilyCount;
     });
   }
 
@@ -160,7 +198,11 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MemberDetailScreen(memberId: member.id),
+        builder: (_) => MemberDetailScreen(
+          memberId: member.id,
+          familyDocId: member.familyDocId,
+          subFamilyDocId: member.subFamilyDocId,
+        ),
       ),
     );
   }
@@ -182,58 +224,86 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     final themeService = Provider.of<ThemeService>(context);
     final isDark = themeService.isDarkMode;
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          // 0. HOME
-          _buildHomeTab(context, lang, isDark),
-          
-          // 1. SEARCH
-          const UserSearchTab(),
-          
-          // 2. CALENDAR
-          const UserCalendarScreen(),
-          
-          // 3. NOTIFICATIONS
-          const UserNotificationScreen(),
-
-          // 4. PROFILE (Settings)
-          const SettingsScreen(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-        indicatorColor: Colors.blue.shade900.withOpacity(0.2),
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home, color: Colors.blue.shade900),
-            label: lang.translate('home'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search, color: Colors.blue.shade900),
-            label: lang.translate('connect'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today, color: Colors.blue.shade900),
-            label: lang.translate('events'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.notifications_outlined),
-            selectedIcon: Icon(Icons.notifications, color: Colors.blue.shade900),
-            label: lang.translate('notifications'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_outlined),
-            selectedIcon: Icon(Icons.person, color: Colors.blue.shade900),
-            label: lang.translate('profile'),
-          ),
-        ],
+    return PopScope(
+      canPop: _selectedIndex == 2,
+      onPopInvoked: (didPop) {
+        if (!didPop && _selectedIndex != 2) {
+          setState(() => _selectedIndex = 2);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            // 0. CALENDAR (Swapped)
+            const UserCalendarScreen(),
+            
+            // 1. SEARCH
+            const UserSearchTab(),
+            
+            // 2. HOME (Swapped)
+            _buildHomeTab(context, lang, isDark),
+            
+            // 3. NOTIFICATIONS
+            const UserNotificationScreen(),
+  
+            // 4. PROFILE (Settings)
+            const SettingsScreen(),
+          ],
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+          indicatorColor: Colors.blue.shade900.withOpacity(0.2),
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.calendar_today_outlined),
+              selectedIcon: Icon(Icons.calendar_today, color: Colors.blue.shade900),
+              label: lang.translate('events'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.search_outlined),
+              selectedIcon: Icon(Icons.search, color: Colors.blue.shade900),
+              label: lang.translate('connect'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home, color: Colors.blue.shade900),
+              label: lang.translate('home'),
+            ),
+            NavigationDestination(
+              icon: StreamBuilder<int>(
+                stream: _notificationService.streamUnreadCount(_familyDocId ?? ''),
+                builder: (context, snapshot) {
+                  int unreadCount = snapshot.data ?? 0;
+                  return Badge(
+                    label: Text(unreadCount.toString()),
+                    isLabelVisible: unreadCount > 0,
+                    child: const Icon(Icons.notifications_outlined),
+                  );
+                },
+              ),
+              selectedIcon: StreamBuilder<int>(
+                stream: _notificationService.streamUnreadCount(_familyDocId ?? ''),
+                builder: (context, snapshot) {
+                  int unreadCount = snapshot.data ?? 0;
+                  return Badge(
+                    label: Text(unreadCount.toString()),
+                    isLabelVisible: unreadCount > 0,
+                    child: Icon(Icons.notifications, color: Colors.blue.shade900),
+                  );
+                },
+              ),
+              label: lang.translate('notifications'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.person_outlined),
+              selectedIcon: Icon(Icons.person, color: Colors.blue.shade900),
+              label: lang.translate('profile'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -246,7 +316,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
         slivers: [
           // 1. App Bar with Profile Quick Link (Shortened)
           SliverAppBar(
-            expandedHeight: 100.0,
+            expandedHeight: 60.0,
             floating: false,
             pinned: true,
             backgroundColor: Colors.blue.shade900,
@@ -382,9 +452,10 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
+          // 1) Total Members
           Expanded(
             child: InkWell(
-              onTap: () => _switchTab(1),
+              onTap: () => _switchTab(1), // Navigate to Search/Connect
               borderRadius: BorderRadius.circular(12),
               child: _buildStatCard(
                 lang.translate('total_members'),
@@ -396,31 +467,34 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             ),
           ),
           const SizedBox(width: 12),
+          // 2) Total Families
           Expanded(
             child: InkWell(
-              onTap: () => _switchTab(1),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FamilyListScreen()),
+                );
+              },
               borderRadius: BorderRadius.circular(12),
               child: _buildStatCard(
-                lang.translate('active_members'),
-                '${_stats['active'] ?? 0}',
-                Icons.check_circle,
-                Colors.green,
+                lang.translate('families'),
+                '${_stats['totalFamilies'] ?? 0}',
+                Icons.family_restroom,
+                Colors.purple,
                 isDark,
               ),
             ),
           ),
           const SizedBox(width: 12),
+          // 3) My Family
           Expanded(
-            child: InkWell(
-              onTap: () => _switchTab(1),
-              borderRadius: BorderRadius.circular(12),
-              child: _buildStatCard(
-                lang.translate('new_this_month'),
-                '${_stats['newThisMonth'] ?? 0}',
-                Icons.trending_up,
-                Colors.orange,
-                isDark,
-              ),
+            child: _buildStatCard(
+              lang.translate('my_family'),
+              '${_stats['myFamilyCount'] ?? 0}',
+              Icons.home_work,
+              Colors.orange,
+              isDark,
             ),
           ),
         ],

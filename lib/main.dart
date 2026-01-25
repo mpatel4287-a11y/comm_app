@@ -24,6 +24,8 @@ import 'screens/user/enhanced_user_dashboard.dart';
 import 'screens/user/user_notification_screen.dart';
 import 'screens/user/user_calendar_screen.dart';
 import 'screens/user/user_search_tab.dart';
+import 'screens/user/qr_scanner_screen.dart';
+
 import 'services/session_manager.dart';
 import 'services/theme_service.dart';
 import 'services/language_service.dart';
@@ -158,8 +160,10 @@ class MyApp extends StatelessWidget {
         '/user/settings': (_) => const SettingsScreen(),
         '/user/profile': (_) => const UserProfileScreen(),
         '/user/notifications': (_) => const UserNotificationScreen(),
+        '/user/qr-scanner': (_) => const QRScannerScreen(),
         '/user/member-detail': (_) =>
             const MemberDetailScreen(memberId: '', familyDocId: null),
+
       },
       onGenerateRoute: (settings) {
         // Handle admin members route with arguments

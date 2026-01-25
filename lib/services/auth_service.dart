@@ -82,6 +82,28 @@ class AuthService {
       final memberDoc = memberQuery.docs.first;
       final memberData = memberDoc.data();
       
+      // Check if member is inactive
+      if (memberData['isActive'] == false) {
+        return LoginResponse(
+          success: false,
+          message: 'Your account is currently inactive. Please contact admin.',
+          isAdmin: false,
+        );
+      }
+
+      // Check if family is blocked
+      final familyDocId = memberData['familyDocId'] ?? '';
+      if (familyDocId.isNotEmpty) {
+        final familySnap = await _firestore.collection('families').doc(familyDocId).get();
+        if (familySnap.exists && (familySnap.data()?['isBlocked'] == true)) {
+          return LoginResponse(
+            success: false,
+            message: 'Your family account is blocked. Please contact admin.',
+            isAdmin: false,
+          );
+        }
+      }
+
       if (memberData['password'] != pwd) {
         return LoginResponse(
           success: false,

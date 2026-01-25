@@ -6,6 +6,9 @@ import '../../services/subfamily_service.dart';
 import '../../services/family_service.dart';
 import '../../services/member_service.dart'; // Added MemberService
 import 'member_list_screen.dart';
+import '../../services/session_manager.dart';
+import '../user/family_tree_view.dart';
+
 
 class SubFamilyListScreen extends StatefulWidget {
   final String mainFamilyDocId;
@@ -26,6 +29,18 @@ class SubFamilyListScreen extends StatefulWidget {
 class _SubFamilyListScreenState extends State<SubFamilyListScreen> {
   final SubFamilyService _subFamilyService = SubFamilyService();
   String _searchQuery = '';
+  String? _userRole;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await SessionManager.getRole();
+    setState(() => _userRole = role);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +48,23 @@ class _SubFamilyListScreenState extends State<SubFamilyListScreen> {
       appBar: AppBar(
         title: Text('${widget.mainFamilyName} - Sub Families'),
         backgroundColor: Colors.blue.shade900,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.account_tree),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FamilyTreeView(
+                    mainFamilyDocId: widget.mainFamilyDocId,
+                    familyName: widget.mainFamilyName,
+                  ),
+                ),
+              );
+            },
+            tooltip: 'View Family Tree',
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -216,89 +248,90 @@ class _SubFamilyListScreenState extends State<SubFamilyListScreen> {
                               const Spacer(),
 
                               // ACTIONS
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: [
-                                  // EDIT
-                                  _buildCompactAction(
-                                    icon: Icons.edit,
-                                    color: Colors.blue,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => EditSubFamilyScreen(
-                                            subFamily: subFamily,
-                                            mainFamilyDocId:
-                                                widget.mainFamilyDocId,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-
-                                  // TOGGLE STATUS
-                                  _buildCompactAction(
-                                    icon: isActive
-                                        ? Icons.check_circle
-                                        : Icons.block,
-                                    color: isActive
-                                        ? Colors.green
-                                        : Colors.grey,
-                                    onTap: () async {
-                                      await _subFamilyService
-                                          .toggleSubFamilyStatus(
-                                        mainFamilyDocId:
-                                            widget.mainFamilyDocId,
-                                        subFamilyDocId: subFamily.id,
-                                      );
-                                    },
-                                  ),
-
-                                  // DELETE
-                                  _buildCompactAction(
-                                    icon: Icons.delete,
-                                    color: Colors.red,
-                                    onTap: () async {
-                                      final ok = await showDialog<bool>(
-                                        context: context,
-                                        builder: (c) => AlertDialog(
-                                          title: const Text(
-                                              'Delete Sub Family'),
-                                          content: const Text(
-                                            'Are you sure? This deletes all members.',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(c, false),
-                                              child: const Text('Cancel'),
+                              if (_userRole == 'admin')
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    // EDIT
+                                    _buildCompactAction(
+                                      icon: Icons.edit,
+                                      color: Colors.blue,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => EditSubFamilyScreen(
+                                              subFamily: subFamily,
+                                              mainFamilyDocId:
+                                                  widget.mainFamilyDocId,
                                             ),
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.red,
-                                              ),
-                                              onPressed: () =>
-                                                  Navigator.pop(c, true),
-                                              child: const Text('Delete'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-
-                                      if (ok == true) {
+                                          ),
+                                        );
+                                      },
+                                    ),
+  
+                                    // TOGGLE STATUS
+                                    _buildCompactAction(
+                                      icon: isActive
+                                          ? Icons.check_circle
+                                          : Icons.block,
+                                      color: isActive
+                                          ? Colors.green
+                                          : Colors.grey,
+                                      onTap: () async {
                                         await _subFamilyService
-                                            .deleteSubFamily(
+                                            .toggleSubFamilyStatus(
                                           mainFamilyDocId:
                                               widget.mainFamilyDocId,
                                           subFamilyDocId: subFamily.id,
                                         );
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
+                                      },
+                                    ),
+  
+                                    // DELETE
+                                    _buildCompactAction(
+                                      icon: Icons.delete,
+                                      color: Colors.red,
+                                      onTap: () async {
+                                        final ok = await showDialog<bool>(
+                                          context: context,
+                                          builder: (c) => AlertDialog(
+                                            title: const Text(
+                                                'Delete Sub Family'),
+                                            content: const Text(
+                                              'Are you sure? This deletes all members.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(c, false),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                                onPressed: () =>
+                                                    Navigator.pop(c, true),
+                                                child: const Text('Delete'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+  
+                                        if (ok == true) {
+                                          await _subFamilyService
+                                              .deleteSubFamily(
+                                            mainFamilyDocId:
+                                                widget.mainFamilyDocId,
+                                            subFamilyDocId: subFamily.id,
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
@@ -311,23 +344,25 @@ class _SubFamilyListScreenState extends State<SubFamilyListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white,
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AddSubFamilyScreen(
-                mainFamilyDocId: widget.mainFamilyDocId,
-                mainFamilyId: widget.mainFamilyId,
-                mainFamilyName: widget.mainFamilyName,
-              ),
+      floatingActionButton: _userRole != 'admin'
+          ? null
+          : FloatingActionButton(
+              backgroundColor: Colors.blue.shade900,
+              foregroundColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddSubFamilyScreen(
+                      mainFamilyDocId: widget.mainFamilyDocId,
+                      mainFamilyId: widget.mainFamilyId,
+                      mainFamilyName: widget.mainFamilyName,
+                    ),
+                  ),
+                );
+              },
+              child: const Icon(Icons.add),
             ),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
     );
   }
 

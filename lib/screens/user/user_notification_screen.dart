@@ -49,11 +49,12 @@ class _UserNotificationScreenState extends State<UserNotificationScreen> {
               icon: const Icon(Icons.done_all),
               tooltip: 'Mark all as read',
               onPressed: () async {
-                // In a real app we might want to mark only the user's notifications as read
-                // For now we can just show a snackbar or implement a specific method
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Marked all as read')),
-                );
+                await _notificationService.markAllAsRead();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Marked all as read')),
+                  );
+                }
               },
             ),
         ],

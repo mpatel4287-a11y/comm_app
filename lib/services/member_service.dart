@@ -173,6 +173,21 @@ class MemberService {
     ).doc(memberId).update({'role': newRole});
   }
 
+  // ---------------- TOGGLE MEMBER STATUS ----------------
+  Future<void> toggleMemberStatus({
+    required String mainFamilyDocId,
+    required String subFamilyDocId,
+    required String memberId,
+  }) async {
+    final doc = await _getMembersCollection(mainFamilyDocId, subFamilyDocId)
+        .doc(memberId)
+        .get();
+    if (doc.exists) {
+      final isActive = doc.data()?['isActive'] as bool? ?? true;
+      await doc.reference.update({'isActive': !isActive});
+    }
+  }
+
   // ---------------- DELETE MEMBER ----------------
   Future<void> deleteMember({
     required String mainFamilyDocId,
@@ -228,8 +243,8 @@ class MemberService {
     // This will query all 'members' subcollections across all families
     return _firestore
         .collectionGroup('members')
-        .orderBy('createdAt', descending: true)
         .snapshots()
+
         .map(
           (snap) => snap.docs
               .map((d) => MemberModel.fromMap(d.id, d.data()))
@@ -242,10 +257,10 @@ class MemberService {
     // Use collection group for cross-family search
     return _firestore
         .collectionGroup('members')
-        .orderBy('fullName')
-        .startAt([query])
-        .endAt(['$query\uf8ff'])
+        .where('fullName', isGreaterThanOrEqualTo: query)
+        .where('fullName', isLessThanOrEqualTo: '$query\uf8ff')
         .limit(20)
+
         .snapshots()
         .map(
           (snap) => snap.docs
@@ -272,6 +287,14 @@ class MemberService {
   Future<int> getMemberCount() async {
     final snapshot = await _firestore.collectionGroup('members').count().get();
     return snapshot.count ?? 0;
+  }
+
+  // ---------------- STREAM MEMBER COUNT (ALL FAMILIES) ----------------
+  Stream<int> streamMemberCount() {
+    return _firestore
+        .collectionGroup('members')
+        .snapshots()
+        .map((snap) => snap.docs.length);
   }
 
   // ---------------- GET UNMARRIED COUNT (ALL FAMILIES) ----------------
@@ -309,8 +332,8 @@ class MemberService {
   Future<List<MemberModel>> getAllMembers() async {
     final snapshot = await _firestore
         .collectionGroup('members')
-        .orderBy('createdAt', descending: true)
         .get();
+
     return snapshot.docs
         .map((d) => MemberModel.fromMap(d.id, d.data()))
         .toList();

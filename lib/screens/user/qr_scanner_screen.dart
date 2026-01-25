@@ -3,8 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:provider/provider.dart';
-import '../../services/language_service.dart';
+import 'package:image_picker/image_picker.dart';
 import 'member_detail_screen.dart';
 
 class QRScannerScreen extends StatefulWidget {
@@ -15,148 +14,130 @@ class QRScannerScreen extends StatefulWidget {
 }
 
 class _QRScannerScreenState extends State<QRScannerScreen> {
-  MobileScannerController cameraController = MobileScannerController();
-  bool _isProcessing = false;
+  MobileScannerController controller = MobileScannerController();
+  bool _isScanning = true;
 
   @override
   void dispose() {
-    cameraController.dispose();
+    controller.dispose();
     super.dispose();
   }
 
-  void _processQRCode(String qrData) async {
-    if (_isProcessing) return;
-    
-    setState(() => _isProcessing = true);
+  void _handleScan(String? code) {
+    if (code == null || !_isScanning) return;
+
+    setState(() => _isScanning = false);
 
     try {
-      // Try to parse as JSON first (our member QR format)
-      final data = jsonDecode(qrData);
-      
-      if (data['type'] == 'member' && data['mid'] != null) {
-        // Navigate to member detail screen
-        final familyDocId = data['familyDocId'] ?? '';
-        final subFamilyDocId = data['subFamilyDocId'] ?? '';
-        final memberId = data['memberId'] ?? '';
-
-        if (mounted && familyDocId.isNotEmpty && memberId.isNotEmpty) {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => MemberDetailScreen(
-                memberId: memberId,
-                familyDocId: familyDocId,
-                subFamilyDocId: subFamilyDocId,
-              ),
+      final Map<String, dynamic> data = jsonDecode(code);
+      if (data['type'] == 'member' && data['memberId'] != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MemberDetailScreen(
+              memberId: data['memberId'],
+              familyDocId: data['familyDocId'],
+              subFamilyDocId: data['subFamilyDocId'],
             ),
-          );
-        }
+          ),
+        );
       } else {
-        _showError('Invalid member QR code');
+        _showError('Invalid QR Code');
       }
     } catch (e) {
-      // If not JSON, show error
-      _showError('Invalid QR code format');
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
+      _showError('This QR code is not recognized by the app.');
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image != null) {
+      final bool scanned = await controller.analyzeImage(image.path);
+      if (!scanned) {
+        _showError('No valid QR code found in the image.');
       }
     }
   }
 
   void _showError(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 2),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        action: SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () => setState(() => _isScanning = true),
         ),
-      );
-    }
+      ),
+    );
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _isScanning = true);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final lang = Provider.of<LanguageService>(context);
-    
+
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(lang.translate('scan_member_qr')),
+        title: const Text('QR Scanner'),
         backgroundColor: Colors.blue.shade900,
         actions: [
           IconButton(
-            icon: ValueListenableBuilder(
-              valueListenable: cameraController.torchState,
-              builder: (context, state, child) {
-                switch (state) {
-                  case TorchState.off:
-                    return const Icon(Icons.flash_off, color: Colors.grey);
-                  case TorchState.on:
-                    return const Icon(Icons.flash_on, color: Colors.yellow);
-                }
-              },
-            ),
-            onPressed: () => cameraController.toggleTorch(),
+            icon: const Icon(Icons.flash_on),
+            onPressed: () => controller.toggleTorch(),
           ),
           IconButton(
-            icon: ValueListenableBuilder(
-              valueListenable: cameraController.cameraFacingState,
-              builder: (context, state, child) {
-                return const Icon(Icons.cameraswitch);
-              },
-            ),
-            onPressed: () => cameraController.switchCamera(),
+            icon: const Icon(Icons.flip_camera_ios),
+            onPressed: () => controller.switchCamera(),
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            flex: 5,
-            child: MobileScanner(
-              controller: cameraController,
-              onDetect: (capture) {
-                final List<Barcode> barcodes = capture.barcodes;
-                for (final barcode in barcodes) {
-                  if (barcode.rawValue != null) {
-                    _processQRCode(barcode.rawValue!);
-                    break;
-                  }
-                }
-              },
+          MobileScanner(
+            controller: controller,
+            onDetect: (capture) {
+              final List<Barcode> barcodes = capture.barcodes;
+              for (final barcode in barcodes) {
+                _handleScan(barcode.rawValue);
+              }
+            },
+          ),
+          // Scanner Overlay
+          Center(
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white, width: 2),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: Colors.blue.shade900,
-              child: Center(
-                child: _isProcessing
-                    ? Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const CircularProgressIndicator(color: Colors.white),
-                          const SizedBox(height: 12),
-                          Text(
-                            lang.translate('scanning'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      )
-                    : Text(
-                        lang.translate('point_camera'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+          // Bottom Controls
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Column(
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      backgroundColor: Colors.blue.shade900,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.image),
+                    label: const Text('Scan from Gallery'),
+                  ),
+                ],
               ),
             ),
           ),

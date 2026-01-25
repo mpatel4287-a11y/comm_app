@@ -168,25 +168,26 @@ class _FamilyListScreenState extends State<FamilyListScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            // EDIT (All with permission)
-                            _buildCompactAction(
-                              icon: Icons.edit,
-                              color: Colors.blue,
-                              onTap: () {
-                                Navigator.push(
-                                  context, 
-                                  MaterialPageRoute(
-                                    builder: (_) => EditFamilyScreen(
-                                      docId: doc.id,
-                                      data: data,
+                            // EDIT (Admin only)
+                            if (_userRole == 'admin')
+                              _buildCompactAction(
+                                icon: Icons.edit,
+                                color: Colors.blue,
+                                onTap: () {
+                                  Navigator.push(
+                                    context, 
+                                    MaterialPageRoute(
+                                      builder: (_) => EditFamilyScreen(
+                                        docId: doc.id,
+                                        data: data,
+                                      )
                                     )
-                                  )
-                                );
-                              },
-                            ),
+                                  );
+                                },
+                              ),
 
                             // BLOCK / UNBLOCK (Admin only)
-                            if (_userRole != 'manager')
+                            if (_userRole == 'admin')
                               _buildCompactAction(
                                 icon: isBlocked ? Icons.lock_open : Icons.block,
                                 color: isBlocked ? Colors.green : Colors.orange,
@@ -197,7 +198,7 @@ class _FamilyListScreenState extends State<FamilyListScreen> {
                               ),
 
                             // DELETE (Admin only)
-                            if (_userRole != 'manager')
+                            if (_userRole == 'admin')
                               _buildCompactAction(
                                 icon: Icons.delete,
                                 color: Colors.red,
@@ -243,7 +244,7 @@ class _FamilyListScreenState extends State<FamilyListScreen> {
           );
         },
       ),
-      floatingActionButton: _userRole == 'manager' 
+      floatingActionButton: _userRole != 'admin' 
           ? null 
           : FloatingActionButton(
               backgroundColor: Colors.blue.shade900,
