@@ -754,8 +754,11 @@ class _UserExploreScreenState extends State<UserExploreScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                MemberDetailScreen(memberId: member.id),
+                            builder: (context) => MemberDetailScreen(
+                              memberId: member.id,
+                              familyDocId: member.familyDocId,
+                              subFamilyDocId: member.subFamilyDocId,
+                            ),
                           ),
                         );
                       },

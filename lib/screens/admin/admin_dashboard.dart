@@ -7,6 +7,7 @@ import '../../services/session_manager.dart';
 import '../../services/theme_service.dart';
 import '../../services/language_service.dart';
 import '../../widgets/top_action_bar.dart';
+import '../../widgets/animation_utils.dart';
 import 'package:provider/provider.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -102,31 +103,42 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildSectionTitle(lang.translate('family_members')),
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 100),
+              child: _buildSectionTitle(lang.translate('family_members')),
+            ),
             const SizedBox(height: 12),
             if (!isManager)
-              _buildDashboardCard(
-                context,
-                icon: Icons.family_restroom,
-                title: lang.translate('families'),
-                subtitle: lang.translate('manage_families'),
-                color: Colors.blue,
-                onTap: () => Navigator.pushNamed(context, '/admin/families'),
+              SlideInAnimation(
+                delay: const Duration(milliseconds: 150),
+                beginOffset: const Offset(-0.2, 0),
+                child: _buildDashboardCard(
+                  context,
+                  icon: Icons.house_siding,
+                  title: lang.translate('families'),
+                  subtitle: lang.translate('manage_families'),
+                  color: Colors.blue,
+                  onTap: () => Navigator.pushNamed(context, '/admin/families'),
+                ),
               ),
             if (!isManager) const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.people,
-              title: lang.translate('members'),
-              subtitle: lang.translate('manage_members'),
-              color: Colors.green,
-              onTap: () => Navigator.push(
+            SlideInAnimation(
+              delay: const Duration(milliseconds: 200),
+              beginOffset: const Offset(-0.2, 0),
+              child: _buildDashboardCard(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => MemberListScreen(
-                    isGlobal: true,
-                    showOnlyManagers: false,
-                    familyName: lang.translate('all_members'),
+                icon: Icons.groups_2,
+                title: lang.translate('members'),
+                subtitle: lang.translate('manage_members'),
+                color: Colors.green,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MemberListScreen(
+                      isGlobal: true,
+                      showOnlyManagers: false,
+                      familyName: lang.translate('all_members'),
+                    ),
                   ),
                 ),
               ),
@@ -134,76 +146,122 @@ class _AdminDashboardState extends State<AdminDashboard> {
             const SizedBox(height: 12),
 
             const SizedBox(height: 24),
-            _buildSectionTitle(lang.translate('organization')),
-            const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.groups,
-              title: lang.translate('groups'),
-              subtitle: lang.translate('manage_groups_subtitle'),
-              color: Colors.purple,
-              onTap: () => Navigator.pushNamed(context, '/admin/groups'),
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 300),
+              child: _buildSectionTitle(lang.translate('organization')),
             ),
             const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.event,
-              title: lang.translate('events'),
-              subtitle: lang.translate('manage_events_subtitle'),
-              color: Colors.blueAccent,
-              onTap: () => Navigator.pushNamed(context, '/admin/events'),
-            ),
-            const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.admin_panel_settings,
-              title: lang.translate('manage_managers'),
-              subtitle: lang.translate('manage_managers_subtitle'),
-              color: Colors.orange,
-              onTap: () => Navigator.push(
+            SlideInAnimation(
+              delay: const Duration(milliseconds: 350),
+              beginOffset: const Offset(-0.2, 0),
+              child: _buildDashboardCard(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => MemberListScreen(
-                    isGlobal: true,
-                    showOnlyManagers: true,
-                    familyName: lang.translate('managers'),
+                icon: Icons.group_work,
+                title: lang.translate('groups'),
+                subtitle: lang.translate('manage_groups_subtitle'),
+                color: Colors.purple,
+                onTap: () => Navigator.pushNamed(context, '/admin/groups'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SlideInAnimation(
+              delay: const Duration(milliseconds: 400),
+              beginOffset: const Offset(-0.2, 0),
+              child: _buildDashboardCard(
+                context,
+                icon: Icons.event_available,
+                title: lang.translate('events'),
+                subtitle: lang.translate('manage_events_subtitle'),
+                color: Colors.blueAccent,
+                onTap: () => Navigator.pushNamed(context, '/admin/events'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SlideInAnimation(
+              delay: const Duration(milliseconds: 450),
+              beginOffset: const Offset(-0.2, 0),
+              child: _buildDashboardCard(
+                context,
+                icon: Icons.store,
+                title: lang.translate('firms'),
+                subtitle: 'View all firms and members',
+                color: Colors.orange,
+                onTap: () => Navigator.pushNamed(context, '/admin/firms'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SlideInAnimation(
+              delay: const Duration(milliseconds: 500),
+              beginOffset: const Offset(-0.2, 0),
+              child: _buildDashboardCard(
+                context,
+                icon: Icons.admin_panel_settings_outlined,
+                title: lang.translate('manage_managers'),
+                subtitle: lang.translate('manage_managers_subtitle'),
+                color: Colors.orange,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MemberListScreen(
+                      isGlobal: true,
+                      showOnlyManagers: true,
+                      familyName: lang.translate('managers'),
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.notifications_active,
-              title: lang.translate('notification_center'),
-              subtitle: lang.translate('send_custom_messages'),
-              color: Colors.redAccent,
-              onTap: () => Navigator.pushNamed(context, '/admin/notifications'),
+            SlideInAnimation(
+              delay: const Duration(milliseconds: 550),
+              beginOffset: const Offset(-0.2, 0),
+              child: _buildDashboardCard(
+                context,
+                icon: Icons.campaign,
+                title: lang.translate('notification_center'),
+                subtitle: lang.translate('send_custom_messages'),
+                color: Colors.redAccent,
+                onTap: () => Navigator.pushNamed(context, '/admin/notifications'),
+              ),
             ),
 
             if (!isManager) ...[
               const SizedBox(height: 24),
-              _buildSectionTitle(lang.translate('insights')),
+              FadeInAnimation(
+                delay: const Duration(milliseconds: 600),
+                child: _buildSectionTitle(lang.translate('insights')),
+              ),
               const SizedBox(height: 12),
-              _buildDashboardCard(
-                context,
-                icon: Icons.analytics,
-                title: lang.translate('analytics'),
-                subtitle: lang.translate('view_stats'),
-                color: Colors.teal,
-                onTap: () => Navigator.pushNamed(context, '/admin/analytics'),
+              SlideInAnimation(
+                delay: const Duration(milliseconds: 650),
+                beginOffset: const Offset(-0.2, 0),
+                child: _buildDashboardCard(
+                  context,
+                  icon: Icons.insights,
+                  title: lang.translate('analytics'),
+                  subtitle: lang.translate('view_stats'),
+                  color: Colors.teal,
+                  onTap: () => Navigator.pushNamed(context, '/admin/analytics'),
+                ),
               ),
             ],
             const SizedBox(height: 24),
-            _buildSectionTitle(lang.translate('settings')),
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 700),
+              child: _buildSectionTitle(lang.translate('settings')),
+            ),
             const SizedBox(height: 12),
-            _buildDashboardCard(
-              context,
-              icon: Icons.settings,
-              title: lang.translate('settings'),
-              subtitle: lang.translate('advanced'),
-              color: Colors.indigo,
-              onTap: () => Navigator.pushNamed(context, '/user/settings'),
+            SlideInAnimation(
+              delay: const Duration(milliseconds: 750),
+              beginOffset: const Offset(-0.2, 0),
+              child: _buildDashboardCard(
+                context,
+                icon: Icons.tune,
+                title: lang.translate('settings'),
+                subtitle: lang.translate('advanced'),
+                color: Colors.indigo,
+                onTap: () => Navigator.pushNamed(context, '/user/settings'),
+              ),
             ),
           ],
         ),
@@ -230,16 +288,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
+    return AnimatedCard(
+      borderRadius: 8,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            ScaleAnimation(
+              delay: const Duration(milliseconds: 100),
+              child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
@@ -247,36 +305,42 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 child: Icon(icon, color: color, size: 28),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FadeInAnimation(
+                    delay: const Duration(milliseconds: 150),
+                    child: Text(
                       title,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Icon(
+            ),
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 200),
+              child: Icon(
                 Icons.arrow_forward_ios,
                 color: Colors.grey.shade400,
                 size: 16,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

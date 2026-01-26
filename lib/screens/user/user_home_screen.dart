@@ -151,8 +151,11 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  MemberDetailScreen(memberId: member.id),
+                              builder: (context) => MemberDetailScreen(
+                                memberId: member.id,
+                                familyDocId: member.familyDocId,
+                                subFamilyDocId: member.subFamilyDocId,
+                              ),
                             ),
                           );
                         },
@@ -366,8 +369,11 @@ class MemberSearchDelegate extends SearchDelegate {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        MemberDetailScreen(memberId: member.id),
+                    builder: (context) => MemberDetailScreen(
+                      memberId: member.id,
+                      familyDocId: member.familyDocId,
+                      subFamilyDocId: member.subFamilyDocId,
+                    ),
                   ),
                 );
               },

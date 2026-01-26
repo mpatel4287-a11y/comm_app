@@ -187,4 +187,16 @@ class GroupService {
     }
     return null;
   }
+
+  // ---------------- GET GROUP COUNT ----------------
+  Future<int> getGroupCount(String familyDocId) async {
+    if (familyDocId.isEmpty) return 0;
+    final snapshot = await _firestore
+        .collection('families')
+        .doc(familyDocId)
+        .collection('groups')
+        .count()
+        .get();
+    return snapshot.count ?? 0;
+  }
 }

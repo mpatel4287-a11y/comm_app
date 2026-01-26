@@ -1,6 +1,6 @@
 // lib/screens/user/enhanced_user_dashboard.dart
 
-// ignore_for_file: deprecated_member_use, unnecessary_underscores
+// ignore_for_file: deprecated_member_use, unnecessary_underscores, sized_box_for_whitespace
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,6 +11,9 @@ import '../../services/session_manager.dart';
 import '../../services/theme_service.dart';
 import '../../services/language_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/family_service.dart';
+import '../../services/group_service.dart';
+import '../../widgets/animation_utils.dart';
 
 
 import 'family_tree_view.dart';
@@ -47,7 +50,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
 
   MemberModel? _currentUser;
   String? _userRole;
-  int _selectedIndex = 2; // Default to HOME tab
+  int _selectedIndex = 2; // Default to HOME tab (0=Calendar, 1=Search, 2=Home, 3=Notifications, 4=Profile)
 
   @override
   void initState() {
@@ -125,6 +128,17 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
         });
       }
     });
+
+    // Live stream for groups
+    if (_familyDocId != null) {
+      GroupService().streamGroups(_familyDocId!).listen((groups) {
+        if (mounted) {
+          setState(() {
+            _stats['totalGroups'] = groups.length;
+          });
+        }
+      });
+    }
   }
 
   void _calculateStats() {
@@ -188,9 +202,17 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     final total = await _memberService.getMemberCount();
     final active = await _memberService.getActiveMemberCount();
     final newThisMonth = await _memberService.getNewMembersThisMonth();
+    final totalFamilies = await FamilyService().getFamilyCount();
+    final totalGroups = await GroupService().getGroupCount(_familyDocId ?? '');
 
     setState(() {
-      _stats = {'total': total, 'active': active, 'newThisMonth': newThisMonth};
+      _stats = {
+        'total': total,
+        'active': active,
+        'newThisMonth': newThisMonth,
+        'totalFamilies': totalFamilies,
+        'totalGroups': totalGroups,
+      };
     });
   }
 
@@ -217,7 +239,45 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PulseAnimation(
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blue.shade400,
+                        Colors.blue.shade700,
+                      ],
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.dashboard,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FadeInAnimation(
+                child: Text(
+                  'Loading dashboard...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final lang = Provider.of<LanguageService>(context);
@@ -254,22 +314,25 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _selectedIndex,
-          onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+          onDestinationSelected: (index) {
+            setState(() => _selectedIndex = index);
+          },
           indicatorColor: Colors.blue.shade900.withOpacity(0.2),
+          animationDuration: const Duration(milliseconds: 300),
           destinations: [
             NavigationDestination(
-              icon: const Icon(Icons.calendar_today_outlined),
-              selectedIcon: Icon(Icons.calendar_today, color: Colors.blue.shade900),
+              icon: const Icon(Icons.event_note_outlined),
+              selectedIcon: Icon(Icons.event_note, color: Colors.blue.shade900),
               label: lang.translate('events'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.search_outlined),
-              selectedIcon: Icon(Icons.search, color: Colors.blue.shade900),
+              icon: const Icon(Icons.connect_without_contact_outlined),
+              selectedIcon: Icon(Icons.connect_without_contact, color: Colors.blue.shade900),
               label: lang.translate('connect'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home, color: Colors.blue.shade900),
+              icon: const Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard, color: Colors.blue.shade900),
               label: lang.translate('home'),
             ),
             NavigationDestination(
@@ -280,7 +343,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   return Badge(
                     label: Text(unreadCount.toString()),
                     isLabelVisible: unreadCount > 0,
-                    child: const Icon(Icons.notifications_outlined),
+                    child: const Icon(Icons.notifications_active_outlined),
                   );
                 },
               ),
@@ -291,15 +354,15 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   return Badge(
                     label: Text(unreadCount.toString()),
                     isLabelVisible: unreadCount > 0,
-                    child: Icon(Icons.notifications, color: Colors.blue.shade900),
+                    child: Icon(Icons.notifications_active, color: Colors.blue.shade900),
                   );
                 },
               ),
               label: lang.translate('notifications'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.person_outlined),
-              selectedIcon: Icon(Icons.person, color: Colors.blue.shade900),
+              icon: const Icon(Icons.account_circle_outlined),
+              selectedIcon: Icon(Icons.account_circle, color: Colors.blue.shade900),
               label: lang.translate('profile'),
             ),
           ],
@@ -311,6 +374,9 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   Widget _buildHomeTab(BuildContext context, LanguageService lang, bool isDark) {
     return RefreshIndicator(
       onRefresh: _loadDashboardData,
+      color: Colors.blue.shade900,
+      backgroundColor: Colors.white,
+      strokeWidth: 3,
       child: CustomScrollView(
         controller: _scrollController,
         slivers: [
@@ -366,74 +432,109 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             padding: const EdgeInsets.symmetric(vertical: 16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // Quick Statistics (Unbound layout fix)
-                _buildQuickStats(lang, isDark),
+                // Quick Statistics (Unbound layout fix) with animation
+                FadeInAnimation(
+                  delay: const Duration(milliseconds: 100),
+                  child: _buildQuickStats(lang, isDark),
+                ),
                 const SizedBox(height: 16),
 
-                // Manager Specific Tools
+                // Manager Specific Tools with animation
                 if (_userRole == 'manager') ...[
-                  _buildManagerTools(lang, isDark),
+                  FadeInAnimation(
+                    delay: const Duration(milliseconds: 200),
+                    child: _buildManagerTools(lang, isDark),
+                  ),
                   const SizedBox(height: 16),
                 ],
                 
-                // Section: Family Tree
-                _buildSectionHeader(
-                  lang.translate('family_tree'),
-                  lang.translate('view_ancestry'),
-                  Icons.account_tree,
-                  () {
-                    if (_familyDocId != null && _familyName != null) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FamilyTreeView(
-                            mainFamilyDocId: _familyDocId!,
-                            familyName: _familyName!,
+                // Section: Family Tree with animation
+                SlideInAnimation(
+                  delay: const Duration(milliseconds: 250),
+                  beginOffset: const Offset(0.1, 0),
+                  child: _buildSectionHeader(
+                    lang.translate('family_tree'),
+                    lang.translate('view_ancestry'),
+                    Icons.account_tree_outlined,
+                    () {
+                      if (_familyDocId != null && _familyName != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FamilyTreeView(
+                              mainFamilyDocId: _familyDocId!,
+                              familyName: _familyName!,
+                            ),
                           ),
-                        ),
-                      );
-                    }
-                  },
-                  lang,
-                  isDark,
+                        );
+                      }
+                    },
+                    lang,
+                    isDark,
+                  ),
                 ),
-                _buildFamilyStats(lang, isDark),
-
-                // Section: Community Activity (Events)
-                _buildSectionHeader(
-                  lang.translate('community_activity'),
-                  lang.translate('recent_events'),
-                  Icons.event_note,
-                  () => setState(() => _selectedIndex = 2), // Go to Calendar tab
-                  lang,
-                  isDark,
+                SlideInAnimation(
+                  delay: const Duration(milliseconds: 300),
+                  beginOffset: const Offset(0.1, 0),
+                  child: _buildFamilyStats(lang, isDark),
                 ),
-                _buildCommunityActivity(lang, isDark),
 
-                // Section: New Members
+                // Section: Community Activity (Events) with animation
+                SlideInAnimation(
+                  delay: const Duration(milliseconds: 350),
+                  beginOffset: const Offset(0.1, 0),
+                  child: _buildSectionHeader(
+                    lang.translate('community_activity'),
+                    lang.translate('recent_events'),
+                    Icons.celebration_outlined,
+                    () => setState(() => _selectedIndex = 0), // Go to Calendar tab
+                    lang,
+                    isDark,
+                  ),
+                ),
+                FadeInAnimation(
+                  delay: const Duration(milliseconds: 400),
+                  child: _buildCommunityActivity(lang, isDark),
+                ),
+
+                // Section: New Members with animation
                 if (_newMembers.isNotEmpty) ...[
-                  _buildSectionHeader(
+                  SlideInAnimation(
+                    delay: const Duration(milliseconds: 450),
+                    beginOffset: const Offset(0.1, 0),
+                    child: _buildSectionHeader(
                     lang.translate('new_members'),
                     lang.translate('recently_joined'),
-                    Icons.person_add,
+                    Icons.person_add_alt_1,
                     null,
-                    lang,
-                    isDark,
+                      lang,
+                      isDark,
+                    ),
                   ),
-                  _buildNewMembersSection(lang, isDark),
+                  FadeInAnimation(
+                    delay: const Duration(milliseconds: 500),
+                    child: _buildNewMembersSection(lang, isDark),
+                  ),
                 ],
 
-                // Section: Member Spotlight
+                // Section: Member Spotlight with animation
                 if (_randomSuggestions.isNotEmpty) ...[
-                  _buildSectionHeader(
+                  SlideInAnimation(
+                    delay: const Duration(milliseconds: 550),
+                    beginOffset: const Offset(0.1, 0),
+                    child: _buildSectionHeader(
                     lang.translate('member_spotlight'),
                     lang.translate('discover_members'),
-                    Icons.stars,
+                    Icons.auto_awesome,
                     () => _generateRandomSuggestions(),
-                    lang,
-                    isDark,
+                      lang,
+                      isDark,
+                    ),
                   ),
-                  _buildMemberSuggestions(lang, isDark),
+                  FadeInAnimation(
+                    delay: const Duration(milliseconds: 600),
+                    child: _buildMemberSuggestions(lang, isDark),
+                  ),
                 ],
 
                 const SizedBox(height: 50),
@@ -460,7 +561,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               child: _buildStatCard(
                 lang.translate('total_members'),
                 '${_stats['total'] ?? 0}',
-                Icons.people,
+                Icons.groups_2,
                 Colors.blue,
                 isDark,
               ),
@@ -480,7 +581,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               child: _buildStatCard(
                 lang.translate('families'),
                 '${_stats['totalFamilies'] ?? 0}',
-                Icons.family_restroom,
+                Icons.people_alt,
                 Colors.purple,
                 isDark,
               ),
@@ -492,7 +593,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             child: _buildStatCard(
               lang.translate('my_family'),
               '${_stats['myFamilyCount'] ?? 0}',
-              Icons.home_work,
+              Icons.family_restroom,
               Colors.orange,
               isDark,
             ),
@@ -509,39 +610,36 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     Color color,
     bool isDark,
   ) {
-    return Container(
+    return AnimatedCard(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade800 : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+      borderRadius: 12,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
+          ScaleAnimation(
+            delay: const Duration(milliseconds: 100),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
             ),
-            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(height: 12),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
+          FadeInAnimation(
+            delay: const Duration(milliseconds: 150),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
@@ -604,7 +702,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                 ),
               ),
               if (onTap != null)
-                Icon(Icons.arrow_forward_ios, color: Colors.blue.shade700, size: 16),
+                Icon(Icons.arrow_forward_ios_rounded, color: Colors.blue.shade700, size: 16),
             ],
           ),
         ),
@@ -652,23 +750,13 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     bool isDark,
     bool isSuggestion,
   ) {
-    return InkWell(
+    return AnimatedCard(
+      margin: const EdgeInsets.only(right: 12),
+      backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+      borderRadius: 12,
       onTap: () => _navigateToMember(member),
-      borderRadius: BorderRadius.circular(12),
       child: Container(
         width: 160,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey.shade800 : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -860,7 +948,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             ),
             child: Column(
               children: [
-                Icon(Icons.event_busy, color: Colors.grey.shade400, size: 48),
+                Icon(Icons.event_available_outlined, color: Colors.grey.shade400, size: 48),
                 const SizedBox(height: 12),
                 Text(
                   lang.translate('no_events'),
@@ -886,25 +974,19 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             final title = data['title'] ?? 'Event';
             final date = (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey.shade800 : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+            return SlideInAnimation(
+              delay: Duration(milliseconds: 50 * index),
+              beginOffset: const Offset(0.2, 0),
+              child: AnimatedCard(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+                borderRadius: 12,
                 border: Border.all(
                   color: Colors.blue.withOpacity(0.3),
                   width: 1,
                 ),
-              ),
-              child: Row(
+                child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -960,6 +1042,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   ),
                 ],
               ),
+            ),
             );
           },
         );
@@ -994,7 +1077,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             children: [
               Expanded(
                 child: _buildManagerToolCard(
-                  icon: Icons.notifications_active,
+                  icon: Icons.campaign,
                   label: lang.translate('notifications'),
                   color: Colors.redAccent,
                   isDark: isDark,
@@ -1004,7 +1087,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildManagerToolCard(
-                  icon: Icons.event,
+                  icon: Icons.event_available,
                   label: lang.translate('events'),
                   color: Colors.blueAccent,
                   isDark: isDark,
@@ -1018,7 +1101,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             children: [
               Expanded(
                 child: _buildManagerToolCard(
-                  icon: Icons.family_restroom,
+                  icon: Icons.house_siding,
                   label: lang.translate('families'),
                   color: Colors.purple,
                   isDark: isDark,
@@ -1028,7 +1111,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildManagerToolCard(
-                  icon: Icons.groups,
+                  icon: Icons.group_work,
                   label: lang.translate('groups'),
                   color: Colors.green,
                   isDark: isDark,
@@ -1049,26 +1132,17 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     required bool isDark,
     required VoidCallback onTap,
   }) {
-    return InkWell(
+    return AnimatedCard(
+      padding: const EdgeInsets.all(16),
+      backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+      borderRadius: 12,
+      border: Border.all(color: color.withOpacity(0.3)),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey.shade800 : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Container(
+      child: Column(
+        children: [
+          ScaleAnimation(
+            delay: const Duration(milliseconds: 100),
+            child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
@@ -1076,8 +1150,11 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               ),
               child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 8),
-            Text(
+          ),
+          const SizedBox(height: 8),
+          FadeInAnimation(
+            delay: const Duration(milliseconds: 150),
+            child: Text(
               label,
               style: TextStyle(
                 fontSize: 14,
@@ -1088,8 +1165,8 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

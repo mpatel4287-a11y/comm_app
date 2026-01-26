@@ -3,44 +3,54 @@
 class AttendanceModel {
   final String id;
   final String eventId;
-  final String memberId;
-  final String memberName;
-  final String status; // present | absent
+  final String markedBy; // Member ID who marked attendance
+  final String markedByName; // Name of person who marked
+  final String attendanceType; // 'family' | 'subfamily' | 'firm'
+  final String entityId; // familyDocId | subFamilyDocId | firmName
+  final String entityName; // Display name
+  final List<String> memberIds; // List of member IDs included in this attendance
+  final int memberCount; // Total count
   final DateTime markedAt;
-  final String markedBy;
 
   AttendanceModel({
     required this.id,
     required this.eventId,
-    required this.memberId,
-    required this.memberName,
-    required this.status,
-    required this.markedAt,
     required this.markedBy,
+    required this.markedByName,
+    required this.attendanceType,
+    required this.entityId,
+    required this.entityName,
+    required this.memberIds,
+    required this.memberCount,
+    required this.markedAt,
   });
 
-  // ---------------- TO MAP ----------------
   Map<String, dynamic> toMap() {
     return {
       'eventId': eventId,
-      'memberId': memberId,
-      'memberName': memberName,
-      'status': status,
-      'markedAt': markedAt,
       'markedBy': markedBy,
+      'markedByName': markedByName,
+      'attendanceType': attendanceType,
+      'entityId': entityId,
+      'entityName': entityName,
+      'memberIds': memberIds,
+      'memberCount': memberCount,
+      'markedAt': markedAt,
     };
   }
 
-  // ---------------- FROM MAP ----------------
   factory AttendanceModel.fromMap(String id, Map<String, dynamic> data) {
     return AttendanceModel(
       id: id,
       eventId: data['eventId'] ?? '',
-      memberId: data['memberId'] ?? '',
-      memberName: data['memberName'] ?? '',
-      status: data['status'] ?? 'absent',
-      markedAt: (data['markedAt'] as dynamic)?.toDate() ?? DateTime.now(),
       markedBy: data['markedBy'] ?? '',
+      markedByName: data['markedByName'] ?? '',
+      attendanceType: data['attendanceType'] ?? 'family',
+      entityId: data['entityId'] ?? '',
+      entityName: data['entityName'] ?? '',
+      memberIds: List<String>.from(data['memberIds'] ?? []),
+      memberCount: data['memberCount'] ?? 0,
+      markedAt: (data['markedAt'] as dynamic)?.toDate() ?? DateTime.now(),
     );
   }
 }

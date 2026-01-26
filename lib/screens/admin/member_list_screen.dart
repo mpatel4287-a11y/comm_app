@@ -14,6 +14,7 @@ import '../../services/language_service.dart';
 import '../../services/member_service.dart';
 import '../../services/photo_service.dart';
 import '../../services/session_manager.dart';
+import '../../widgets/animation_utils.dart';
 import '../user/member_detail_screen.dart';
 
 // Placeholder for AddMemberScreen
@@ -1554,9 +1555,9 @@ class _MemberListScreenState extends State<MemberListScreen>
     print('  familyName: ${widget.familyName}');
 
     if (widget.isGlobal) {
+      // Remove orderBy for collectionGroup to avoid index requirement
       _membersStream = FirebaseFirestore.instance
           .collectionGroup('members')
-          .orderBy('createdAt', descending: true)
           .snapshots();
     } else {
       // Ensure we have required IDs for subfamily query
@@ -1594,7 +1595,6 @@ class _MemberListScreenState extends State<MemberListScreen>
         if (widget.isGlobal) {
           _membersStream = FirebaseFirestore.instance
               .collectionGroup('members')
-              .orderBy('createdAt', descending: true)
               .snapshots();
         } else {
           _membersStream = FirebaseFirestore.instance
@@ -1648,7 +1648,11 @@ class _MemberListScreenState extends State<MemberListScreen>
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Icon(icon, size: 18, color: color),
       ),
     );
@@ -1734,7 +1738,43 @@ class _MemberListScreenState extends State<MemberListScreen>
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting &&
                     !snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        PulseAnimation(
+                          child: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.blue.shade400,
+                                  Colors.blue.shade700,
+                                ],
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.people,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        FadeInAnimation(
+                          child: Text(
+                            'Loading members...',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 if (snapshot.hasError) {
@@ -1773,7 +1813,16 @@ class _MemberListScreenState extends State<MemberListScreen>
                   final matchesTag =
                       _selectedTag.isEmpty || tags.contains(_selectedTag);
                   return matchesSearch && matchesTag;
-                }).toList();
+                }).toList()
+                  ..sort((a, b) {
+                    // Sort by createdAt descending in memory
+                    final aCreated = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                    final bCreated = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                    if (aCreated == null && bCreated == null) return 0;
+                    if (aCreated == null) return 1;
+                    if (bCreated == null) return -1;
+                    return bCreated.compareTo(aCreated);
+                  });
 
                 if (members.isEmpty) {
                   return const Center(
@@ -1787,7 +1836,7 @@ class _MemberListScreenState extends State<MemberListScreen>
                     crossAxisCount: 2,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    childAspectRatio: 0.75, // Adjust card height
+                    childAspectRatio: 0.68, // Reduced to fix overflow
                   ),
                   itemCount: members.length,
                   itemBuilder: (context, index) {
@@ -1795,192 +1844,303 @@ class _MemberListScreenState extends State<MemberListScreen>
                     final data = doc.data() as Map<String, dynamic>;
                     final isActive = data['isActive'] as bool? ?? true;
 
-                    return InkWell(
-                      onTap: () {
-                        // Determine family IDs robustly from record data or path
-                        String famId = data['familyDocId'] ?? '';
-                        String subFamId = data['subFamilyDocId'] ?? '';
-                        
-                        // Fallback to parsing from path if missing (legacy records)
-                        if (famId.isEmpty || subFamId.isEmpty) {
-                          final pathParts = doc.reference.path.split('/');
-                          // families/{famId}/subfamilies/{subfamId}/members/{memId}
-                          if (pathParts.length >= 4) {
-                            famId = pathParts[1];
-                            subFamId = pathParts[3];
+                    return SlideInAnimation(
+                      delay: Duration(milliseconds: 50 * index),
+                      beginOffset: const Offset(0, 0.2),
+                      child: AnimatedCard(
+                        borderRadius: 16,
+                        onTap: () {
+                          // Determine family IDs robustly from record data or path
+                          String famId = data['familyDocId'] ?? '';
+                          String subFamId = data['subFamilyDocId'] ?? '';
+                          
+                          // Fallback to parsing from path if missing (legacy records)
+                          if (famId.isEmpty || subFamId.isEmpty) {
+                            final pathParts = doc.reference.path.split('/');
+                            // families/{famId}/subfamilies/{subfamId}/members/{memId}
+                            if (pathParts.length >= 4) {
+                              famId = pathParts[1];
+                              subFamId = pathParts[3];
+                            }
                           }
-                        }
 
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MemberDetailScreen(
-                              memberId: doc.id,
-                              familyDocId: famId,
-                              subFamilyDocId: subFamId,
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MemberDetailScreen(
+                                memberId: doc.id,
+                                familyDocId: famId,
+                                subFamilyDocId: subFamId,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: isActive
+                                ? LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.green.shade50,
+                                      Colors.white,
+                                    ],
+                                  )
+                                : LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.grey.shade300,
+                                      Colors.grey.shade200,
+                                    ],
+                                  ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isActive
+                                  ? Colors.green.shade200
+                                  : Colors.grey.shade400,
+                              width: 1.5,
                             ),
                           ),
-                        );
-                      },
-                      child: Card(
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        color: isActive ? Colors.white : Colors.grey.shade200,
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // PROFILE PHOTO
-                              ClipOval(
-                                child: (() {
-                                  final photoUrl =
-                                      data['photoUrl'] as String? ?? '';
-                                  if (photoUrl.isNotEmpty &&
-                                      photoUrl.startsWith('http')) {
-                                    return Image.network(
-                                      photoUrl,
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return _buildInitials(data);
-                                          },
-                                    );
-                                  } else {
-                                    return _buildInitials(data);
-                                  }
-                                })(),
-                              ),
-                              const SizedBox(height: 8),
-
-                              Text(
-                                data['fullName'] ?? 'Unnamed',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: isActive
-                                      ? Colors.black87
-                                      : Colors.grey.shade700,
-                                ),
-                              ),
-                              Text(
-                                data['mid'] ?? 'NO MID',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.blue.shade900,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-
-                              // SURNAME / ROLE
-                              Text(
-                                '${data['surname'] ?? ''}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              
-                              // AGE
-                              Text(
-                                '${data['age'] ?? 0} years',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.blue.shade700,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-
-                              const Spacer(),
-
-                               // ACTIONS
-                              if (_userRole == 'admin')
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: [
-                                    // EDIT
-                                    _buildCompactAction(
-                                      icon: Icons.edit,
-                                      color: Colors.blue,
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => EditMemberScreen(
-                                              memberId: doc.id,
-                                              familyDocId: widget.familyDocId ?? data['familyDocId'],
-                                              subFamilyDocId: widget.subFamilyDocId ?? data['subFamilyDocId'],
-                                            ),
-                                          ),
-                                        );
-                                      },
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // PROFILE PHOTO with enhanced design
+                                Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isActive
+                                          ? Colors.green.shade400
+                                          : Colors.grey.shade400,
+                                      width: 3,
                                     ),
-  
-                                    // BLOCK / UNBLOCK
-                                    _buildCompactAction(
-                                      icon: isActive ? Icons.block : Icons.lock_open,
-                                      color: isActive ? Colors.orange : Colors.green,
-                                      onTap: () async {
-                                        await MemberService().toggleMemberStatus(
-                                          mainFamilyDocId: widget.familyDocId ?? data['familyDocId'] ?? '',
-                                          subFamilyDocId: widget.subFamilyDocId ?? data['subFamilyDocId'] ?? '',
-                                          memberId: doc.id,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (isActive
+                                                ? Colors.green
+                                                : Colors.grey)
+                                            .withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: (() {
+                                      final photoUrl =
+                                          data['photoUrl'] as String? ?? '';
+                                      if (photoUrl.isNotEmpty &&
+                                          photoUrl.startsWith('http')) {
+                                        return Image.network(
+                                          photoUrl,
+                                          width: 60,
+                                          height: 60,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                                return _buildInitials(data);
+                                              },
                                         );
-                                      },
-                                    ),
+                                      } else {
+                                        return _buildInitials(data);
+                                      }
+                                    })(),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
 
-                                    // DELETE
-                                    _buildCompactAction(
-                                      icon: Icons.delete,
-                                      color: Colors.red,
-                                      onTap: () async {
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            title: const Text('Delete Member'),
-                                            content: const Text(
-                                              'Are you sure you want to delete this member?',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(context, false),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.red,
+                                // NAME
+                                Text(
+                                  data['fullName'] ?? 'Unnamed',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive
+                                        ? Colors.black87
+                                        : Colors.grey.shade700,
+                                  ),
+                                ),
+                                
+                                const SizedBox(height: 4),
+
+                                // MID Badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade100,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: Colors.blue.shade300,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    data['mid'] ?? 'NO MID',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.blue.shade900,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                
+                                const SizedBox(height: 3),
+
+                                // AGE Badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade100,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.cake,
+                                        size: 10,
+                                        color: Colors.orange.shade700,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '${data['age'] ?? 0}y',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.orange.shade700,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const Spacer(),
+
+                                // ACTIONS
+                                if (_userRole == 'admin')
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: _buildCompactAction(
+                                            icon: Icons.edit,
+                                            color: Colors.blue,
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => EditMemberScreen(
+                                                    memberId: doc.id,
+                                                    familyDocId: widget.familyDocId ??
+                                                        data['familyDocId'],
+                                                    subFamilyDocId: widget
+                                                            .subFamilyDocId ??
+                                                        data['subFamilyDocId'],
+                                                  ),
                                                 ),
-                                                onPressed: () =>
-                                                    Navigator.pop(context, true),
-                                                child: const Text('Delete'),
-                                              ),
-                                            ],
+                                              );
+                                            },
                                           ),
-                                        );
-                                        if (confirm == true) {
-                                          await MemberService().deleteMember(
-                                            mainFamilyDocId: widget.familyDocId ?? data['familyDocId'] ?? '',
-                                            subFamilyDocId:
-                                                widget.subFamilyDocId ?? data['subFamilyDocId'] ?? '',
-                                            memberId: doc.id,
-                                          );
-                                        }
-                                      },
+                                        ),
+                                        Flexible(
+                                          child: _buildCompactAction(
+                                            icon: isActive
+                                                ? Icons.block
+                                                : Icons.lock_open,
+                                            color: isActive
+                                                ? Colors.orange
+                                                : Colors.green,
+                                            onTap: () async {
+                                              await MemberService()
+                                                  .toggleMemberStatus(
+                                                mainFamilyDocId: widget.familyDocId ??
+                                                    data['familyDocId'] ??
+                                                    '',
+                                                subFamilyDocId: widget
+                                                        .subFamilyDocId ??
+                                                    data['subFamilyDocId'] ??
+                                                    '',
+                                                memberId: doc.id,
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        Flexible(
+                                          child: _buildCompactAction(
+                                            icon: Icons.delete,
+                                            color: Colors.red,
+                                            onTap: () async {
+                                              final confirm =
+                                                  await showDialog<bool>(
+                                                context: context,
+                                                builder: (_) => AlertDialog(
+                                                  title: const Text('Delete Member'),
+                                                  content: const Text(
+                                                    'Are you sure you want to delete this member?',
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                              context, false),
+                                                      child: const Text('Cancel'),
+                                                    ),
+                                                    ElevatedButton(
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.red,
+                                                      ),
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                              context, true),
+                                                      child: const Text('Delete'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (confirm == true) {
+                                                await MemberService().deleteMember(
+                                                  mainFamilyDocId: widget.familyDocId ??
+                                                      data['familyDocId'] ??
+                                                      '',
+                                                  subFamilyDocId: widget
+                                                          .subFamilyDocId ??
+                                                      data['subFamilyDocId'] ??
+                                                      '',
+                                                  memberId: doc.id,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                            ],
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

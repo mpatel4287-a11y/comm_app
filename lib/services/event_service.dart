@@ -17,6 +17,9 @@ class EventService {
     String location = '',
     String type = 'general',
     String familyDocId = '',
+    String visibilityType = 'all',
+    List<String> visibleToMemberIds = const [],
+    List<String> visibleToGroupIds = const [],
   }) async {
     final eventRef = _firestore.collection('events').doc();
 
@@ -30,6 +33,9 @@ class EventService {
       createdBy: createdBy,
       familyDocId: familyDocId,
       createdAt: DateTime.now(),
+      visibilityType: visibilityType,
+      visibleToMemberIds: visibleToMemberIds,
+      visibleToGroupIds: visibleToGroupIds,
     );
 
     await eventRef.set(event.toMap());
@@ -85,6 +91,9 @@ class EventService {
     String? location,
     DateTime? date,
     String? type,
+    String? visibilityType,
+    List<String>? visibleToMemberIds,
+    List<String>? visibleToGroupIds,
   }) async {
     final updates = <String, dynamic>{};
 
@@ -93,6 +102,9 @@ class EventService {
     if (location != null) updates['location'] = location;
     if (date != null) updates['date'] = date;
     if (type != null) updates['type'] = type;
+    if (visibilityType != null) updates['visibilityType'] = visibilityType;
+    if (visibleToMemberIds != null) updates['visibleToMemberIds'] = visibleToMemberIds;
+    if (visibleToGroupIds != null) updates['visibleToGroupIds'] = visibleToGroupIds;
 
     if (updates.isNotEmpty) {
       await _firestore.collection('events').doc(eventId).update(updates);
@@ -115,15 +127,34 @@ class EventService {
   }
 
   // ---------------- STREAM EVENTS (ALL) ----------------
-  Stream<List<EventModel>> streamAllEvents() {
+  Stream<List<EventModel>> streamAllEvents({String? currentMemberId, List<String>? currentGroupIds}) {
     return _firestore
         .collection('events')
         .orderBy('date', descending: true)
         .snapshots()
         .map(
-          (snap) => snap.docs
-              .map((doc) => EventModel.fromMap(doc.id, doc.data()))
-              .toList(),
+          (snap) {
+            final events = snap.docs
+                .map((doc) => EventModel.fromMap(doc.id, doc.data()))
+                .toList();
+            
+            // Filter by visibility
+            if (currentMemberId != null || currentGroupIds != null) {
+              return events.where((event) {
+                if (event.visibilityType == 'all') return true;
+                if (event.visibilityType == 'selected') {
+                  if (currentMemberId != null && event.visibleToMemberIds.contains(currentMemberId)) {
+                    return true;
+                  }
+                  if (currentGroupIds != null) {
+                    return event.visibleToGroupIds.any((gid) => currentGroupIds.contains(gid));
+                  }
+                }
+                return false;
+              }).toList();
+            }
+            return events;
+          },
         );
   }
 

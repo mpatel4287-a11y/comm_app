@@ -373,7 +373,14 @@ class UserMemberListScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MemberDetailScreen(memberId: doc.id),
+                        builder: (_) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return MemberDetailScreen(
+                          memberId: doc.id,
+                          familyDocId: data['familyDocId'] ?? '',
+                          subFamilyDocId: data['subFamilyDocId'] ?? '',
+                        );
+                      },
                       ),
                     );
                   },

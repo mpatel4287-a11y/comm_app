@@ -466,7 +466,11 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => MemberDetailScreen(memberId: member.id),
+              builder: (context) => MemberDetailScreen(
+                memberId: member.id,
+                familyDocId: member.familyDocId,
+                subFamilyDocId: member.subFamilyDocId,
+              ),
             ),
           );
         },

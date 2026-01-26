@@ -61,6 +61,93 @@ class _ProfileImageState extends State<ProfileImage> {
   }
 }
 
+/// Attractive loading spinner widget
+class _LoadingSpinner extends StatefulWidget {
+  const _LoadingSpinner();
+
+  @override
+  State<_LoadingSpinner> createState() => _LoadingSpinnerState();
+}
+
+class _LoadingSpinnerState extends State<_LoadingSpinner>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _rotationAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+
+    _rotationAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.linear),
+    );
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.2), weight: 1),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.2, end: 1.0), weight: 1),
+    ]).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: Transform.rotate(
+            angle: _rotationAnimation.value * 2 * 3.14159,
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.blue.shade400,
+                    Colors.blue.shade700,
+                    Colors.blue.shade900,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 30,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class MemberDetailScreen extends StatefulWidget {
   final String memberId;
   final String? familyDocId;
@@ -92,27 +179,57 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   }
 
   Future<void> _loadMember() async {
-    final docId =
-        widget.familyDocId ?? await SessionManager.getFamilyDocId() ?? '';
-    if (docId.isEmpty) {
-      setState(() => _loading = false);
-      return;
-    }
-    final member = await _memberService.getMember(
-      mainFamilyDocId: docId,
-      subFamilyDocId: widget.subFamilyDocId ?? '',
-      memberId: widget.memberId,
-    );
-    final isAdmin = await SessionManager.getIsAdmin() ?? false;
-    final userRole = await SessionManager.getRole() ?? 'member';
+    setState(() => _loading = true);
+    
+    try {
+      MemberModel? member;
+      
+      // If familyDocId and subFamilyDocId are provided, use them
+      if (widget.familyDocId != null && widget.familyDocId!.isNotEmpty &&
+          widget.subFamilyDocId != null && widget.subFamilyDocId!.isNotEmpty) {
+        member = await _memberService.getMember(
+          mainFamilyDocId: widget.familyDocId!,
+          subFamilyDocId: widget.subFamilyDocId!,
+          memberId: widget.memberId,
+        );
+        if (member != null) {
+          setState(() {
+            _member = member;
+            _familyDocId = widget.familyDocId;
+            _loading = false;
+          });
+          return;
+        }
+      }
+      
+      // If not found or IDs not provided, search across all families
+      final allMembers = await _memberService.getAllMembers();
+      member = allMembers.firstWhere(
+        (m) => m.id == widget.memberId,
+        orElse: () => allMembers.firstWhere(
+          (m) => m.mid == widget.memberId,
+          orElse: () => throw Exception('Member not found'),
+        ),
+      );
+      
+      final isAdmin = await SessionManager.getIsAdmin() ?? false;
+      final userRole = await SessionManager.getRole() ?? 'member';
 
-    setState(() {
-      _member = member;
-      _familyDocId = docId;
-      _isAdmin = isAdmin;
-      _currentUserRole = userRole;
-      _loading = false;
-    });
+      setState(() {
+        _member = member;
+        _familyDocId = member?.familyDocId ?? widget.familyDocId ?? '';
+        _isAdmin = isAdmin;
+        _currentUserRole = userRole;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading member: $e');
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
   }
 
   String _generateShareText() {
@@ -232,7 +349,24 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
     final lang = Provider.of<LanguageService>(context);
 
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _LoadingSpinner(),
+              const SizedBox(height: 24),
+              Text(
+                'Loading...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (_member == null) {

@@ -1,4 +1,4 @@
-// ignore_for_file: unused_import
+// ignore_for_file: unused_import, no_leading_underscores_for_local_identifiers
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -15,6 +15,7 @@ import 'screens/admin/event_management_screen.dart';
 import 'screens/admin/analytics_dashboard.dart';
 import 'screens/admin/system_health_screen.dart';
 import 'screens/admin/notification_center_screen.dart';
+import 'screens/admin/firms_list_screen.dart';
 import 'screens/user/digital_id_screen.dart';
 import 'models/member_model.dart';
 import 'screens/user/settings_screen.dart';
@@ -25,6 +26,7 @@ import 'screens/user/user_notification_screen.dart';
 import 'screens/user/user_calendar_screen.dart';
 import 'screens/user/user_search_tab.dart';
 import 'screens/user/qr_scanner_screen.dart';
+import 'screens/family_tree_screen.dart';
 
 import 'services/session_manager.dart';
 import 'services/theme_service.dart';
@@ -139,9 +141,9 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         final scale = themeService.textScale;
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(scale),
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(scale)),
           child: child!,
         );
       },
@@ -156,6 +158,7 @@ class MyApp extends StatelessWidget {
         '/admin/analytics': (_) => const AnalyticsDashboard(),
         '/admin/system-health': (_) => const SystemHealthScreen(),
         '/admin/notifications': (_) => const NotificationCenterScreen(),
+        '/admin/firms': (_) => const FirmsListScreen(),
         '/home': (_) => const EnhancedUserDashboard(),
         '/user/settings': (_) => const SettingsScreen(),
         '/user/profile': (_) => const UserProfileScreen(),
@@ -163,14 +166,45 @@ class MyApp extends StatelessWidget {
         '/user/qr-scanner': (_) => const QRScannerScreen(),
         '/user/member-detail': (_) =>
             const MemberDetailScreen(memberId: '', familyDocId: null),
-
+        '/family-tree': (_) => const FamilyTreeScreen(),
       },
       onGenerateRoute: (settings) {
+        // Custom animated page route
+        PageRoute<T> _buildRoute<T extends Object?>(
+          Widget page, {
+          RouteSettings? routeSettings,
+        }) {
+          return PageRouteBuilder<T>(
+            settings: routeSettings ?? settings,
+            pageBuilder: (context, animation, secondaryAnimation) => page,
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position:
+                          Tween<Offset>(
+                            begin: const Offset(0.0, 0.05),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutCubic,
+                            ),
+                          ),
+                      child: child,
+                    ),
+                  );
+                },
+            transitionDuration: const Duration(milliseconds: 300),
+          );
+        }
+
         // Handle admin members route with arguments
         if (settings.name == '/admin/members') {
           if (settings.arguments == null) {
-            return MaterialPageRoute(
-              builder: (_) => const Scaffold(
+            return _buildRoute(
+              const Scaffold(
                 body: Center(
                   child: Text('Error: Missing arguments for member list'),
                 ),
@@ -178,23 +212,20 @@ class MyApp extends StatelessWidget {
             );
           }
           final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (_) => MemberListScreen(
+          return _buildRoute(
+            MemberListScreen(
               familyDocId: args['familyDocId'],
               familyName: args['familyName'],
-              subFamilyDocId:
-                  args['subFamilyDocId'], // NEW: Pass subFamilyDocId
+              subFamilyDocId: args['subFamilyDocId'],
             ),
           );
         }
         if (settings.name == '/user/digital-id') {
           final args = settings.arguments as MemberModel;
-          return MaterialPageRoute(
-            builder: (_) => DigitalIdScreen(member: args),
-          );
+          return _buildRoute(DigitalIdScreen(member: args));
         }
         // Fallback for any unhandled route - go to login
-        return MaterialPageRoute(builder: (_) => const LoginScreen());
+        return _buildRoute(const LoginScreen());
       },
     );
   }

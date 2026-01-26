@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/session_manager.dart';
 import '../services/language_service.dart';
 import '../services/biometric_service.dart';
+import '../widgets/animation_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -166,55 +167,74 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo or Icon
-                    Icon(
-                      Icons.lock_person_rounded,
-                      size: 80,
-                      color: Theme.of(context).colorScheme.primary,
+                    // Logo or Icon with animation
+                    ScaleAnimation(
+                      delay: const Duration(milliseconds: 100),
+                      beginScale: 0.5,
+                      child: Icon(
+                        Icons.lock_person_rounded,
+                        size: 80,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                     const SizedBox(height: 24),
-                    Text(
-                      _isAdminMode
-                          ? 'Admin Portal'
-                          : lang.translate('welcome_back'),
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
+                    FadeInAnimation(
+                      delay: const Duration(milliseconds: 300),
+                      child: Text(
+                        _isAdminMode
+                            ? 'Admin Portal'
+                            : lang.translate('welcome_back'),
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),
 
                     if (!_isAdminMode) ...[
-                      // MID INPUT (F-XXX-SXX-XXX)
-                      Text(
-                        lang.translate('username'),
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 12),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      // MID INPUT (F-XXX-SXX-XXX) with animation
+                      SlideInAnimation(
+                        delay: const Duration(milliseconds: 400),
+                        beginOffset: const Offset(0, 0.2),
+                        child: Column(
                           children: [
-                            _buildFixedLabel('F-'),
-                            _buildMidInput(_midFamilyCtrl, 3, 'XXX'),
-                            _buildFixedLabel('-S'),
-                            _buildMidInput(_midSubFamilyCtrl, 2, 'XX'),
-                            _buildFixedLabel('-'),
-                            _buildMidInput(_midRandomCtrl, 3, 'XXX'),
+                            Text(
+                              lang.translate('username'),
+                              style: const TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 12),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _buildFixedLabel('F-'),
+                                  _buildMidInput(_midFamilyCtrl, 3, 'XXX'),
+                                  _buildFixedLabel('-S'),
+                                  _buildMidInput(_midSubFamilyCtrl, 2, 'XX'),
+                                  _buildFixedLabel('-'),
+                                  _buildMidInput(_midRandomCtrl, 3, 'XXX'),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ] else ...[
-                      // ADMIN ID INPUT (ADM-83288)
-                      TextField(
-                        controller: _adminIdCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Admin Login ID (ADM-XXXXXXX)',
-                          prefixIcon: const Icon(Icons.admin_panel_settings),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      // ADMIN ID INPUT (ADM-83288) with animation
+                      SlideInAnimation(
+                        delay: const Duration(milliseconds: 400),
+                        beginOffset: const Offset(0, 0.2),
+                        child: TextField(
+                          controller: _adminIdCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'Admin Login ID (ADM-XXXXXXX)',
+                            prefixIcon: const Icon(Icons.admin_panel_settings),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -222,15 +242,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 16),
 
-                    // PASSWORD INPUT
-                    TextField(
-                      controller: _passwordCtrl,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: lang.translate('password'),
-                        prefixIcon: const Icon(Icons.key_rounded),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    // PASSWORD INPUT with animation
+                    SlideInAnimation(
+                      delay: const Duration(milliseconds: 500),
+                      beginOffset: const Offset(0, 0.2),
+                      child: TextField(
+                        controller: _passwordCtrl,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: lang.translate('password'),
+                          prefixIcon: const Icon(Icons.key_rounded),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
@@ -253,34 +277,40 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (_loading)
                       const CircularProgressIndicator()
                     else ...[
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      ScaleAnimation(
+                        delay: const Duration(milliseconds: 600),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 4,
                             ),
-                          ),
-                          onPressed: _login,
-                          child: Text(
-                            _isAdminMode
-                                ? 'CONTINUE AS ADMIN'
-                                : lang.translate('login'),
+                            onPressed: _login,
+                            child: Text(
+                              _isAdminMode
+                                  ? 'CONTINUE AS ADMIN'
+                                  : lang.translate('login'),
+                            ),
                           ),
                         ),
                       ),
                       if (_canCheckBiometrics && _biometricEnabled) ...[
                         const SizedBox(height: 16),
-                        IconButton(
-                          onPressed: _authenticateWithBiometrics,
-                          icon: const Icon(Icons.fingerprint, size: 48),
-                          color: Theme.of(context).colorScheme.primary,
-                          tooltip: lang.translate('biometric_login'),
+                        PulseAnimation(
+                          child: IconButton(
+                            onPressed: _authenticateWithBiometrics,
+                            icon: const Icon(Icons.fingerprint, size: 48),
+                            color: Theme.of(context).colorScheme.primary,
+                            tooltip: lang.translate('biometric_login'),
+                          ),
                         ),
                       ],
                     ],

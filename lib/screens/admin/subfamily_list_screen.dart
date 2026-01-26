@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import '../../models/subfamily_model.dart';
 import '../../services/subfamily_service.dart';
 import '../../services/family_service.dart';
-import '../../services/member_service.dart'; // Added MemberService
+import '../../services/member_service.dart';
+import '../../widgets/animation_utils.dart';
 import 'member_list_screen.dart';
 import '../../services/session_manager.dart';
 import '../user/family_tree_view.dart';
@@ -137,202 +138,298 @@ class _SubFamilyListScreenState extends State<SubFamilyListScreen> {
                     final subFamily = subFamilies[index];
                     final isActive = subFamily.isActive;
 
-                    return InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MemberListScreen(
-                              familyDocId: widget.mainFamilyDocId,
-                              familyName: subFamily.subFamilyName,
-                              subFamilyDocId: subFamily.id,
+                    return SlideInAnimation(
+                      delay: Duration(milliseconds: 50 * index),
+                      beginOffset: const Offset(0, 0.2),
+                      child: AnimatedCard(
+                        borderRadius: 16,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MemberListScreen(
+                                familyDocId: widget.mainFamilyDocId,
+                                familyName: subFamily.subFamilyName,
+                                subFamilyDocId: subFamily.id,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: isActive
+                                ? LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.purple.shade50,
+                                      Colors.white,
+                                    ],
+                                  )
+                                : LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.grey.shade300,
+                                      Colors.grey.shade200,
+                                    ],
+                                  ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isActive
+                                  ? Colors.purple.shade200
+                                  : Colors.grey.shade400,
+                              width: 1.5,
                             ),
                           ),
-                        );
-                      },
-                      child: Card(
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        color: isActive ? Colors.white : Colors.grey.shade200,
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // HEADER
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 14,
-                                    backgroundColor: isActive
-                                        ? Colors.blue.shade900
-                                        : Colors.grey,
-                                    child: const Icon(
-                                      Icons.groups_2_rounded,
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  if (!isActive)
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // HEADER
+                                Row(
+                                  children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
+                                      padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: Colors.red.shade100,
-                                        borderRadius: BorderRadius.circular(4),
+                                        gradient: LinearGradient(
+                                          colors: isActive
+                                              ? [
+                                                  Colors.purple.shade600,
+                                                  Colors.purple.shade800,
+                                                ]
+                                              : [
+                                                  Colors.grey.shade400,
+                                                  Colors.grey.shade500,
+                                                ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: (isActive
+                                                    ? Colors.purple
+                                                    : Colors.grey)
+                                                .withOpacity(0.3),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
                                       ),
+                                      child: const Icon(
+                                        Icons.groups_2_rounded,
+                                        size: 20,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (!isActive)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade100,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: Colors.red.shade300,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'INACTIVE',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: Colors.red.shade700,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+
+                                // SUB FAMILY NAME
+                                Text(
+                                  subFamily.subFamilyName,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive
+                                        ? Colors.black87
+                                        : Colors.grey.shade700,
+                                    height: 1.2,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 6),
+
+                                // HEAD OF FAMILY
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person,
+                                      size: 14,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
                                       child: Text(
-                                        'INACTIVE',
+                                        subFamily.headOfFamily,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.red.shade700,
-                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-
-                              // SUB FAMILY NAME
-                              Text(
-                                subFamily.subFamilyName,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: isActive
-                                      ? Colors.black
-                                      : Colors.grey.shade700,
-                                ),
-                              ),
-
-                              const SizedBox(height: 4),
-
-                              // HEAD OF FAMILY
-                              Text(
-                                subFamily.headOfFamily,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-
-                              // REAL-TIME MEMBER COUNT
-                              FutureBuilder<int>(
-                                future: MemberService().getSubFamilyMemberCount(
-                                  widget.mainFamilyDocId,
-                                  subFamily.id,
-                                ),
-                                builder: (context, countSnap) {
-                                  final count = countSnap.data ?? 0;
-                                  return Text(
-                                    '$count members',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.blue.shade700,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  );
-                                },
-                              ),
-
-                              const Spacer(),
-
-                              // ACTIONS
-                              if (_userRole == 'admin')
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: [
-                                    // EDIT
-                                    _buildCompactAction(
-                                      icon: Icons.edit,
-                                      color: Colors.blue,
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => EditSubFamilyScreen(
-                                              subFamily: subFamily,
-                                              mainFamilyDocId:
-                                                  widget.mainFamilyDocId,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-  
-                                    // TOGGLE STATUS
-                                    _buildCompactAction(
-                                      icon: isActive
-                                          ? Icons.check_circle
-                                          : Icons.block,
-                                      color: isActive
-                                          ? Colors.green
-                                          : Colors.grey,
-                                      onTap: () async {
-                                        await _subFamilyService
-                                            .toggleSubFamilyStatus(
-                                          mainFamilyDocId:
-                                              widget.mainFamilyDocId,
-                                          subFamilyDocId: subFamily.id,
-                                        );
-                                      },
-                                    ),
-  
-                                    // DELETE
-                                    _buildCompactAction(
-                                      icon: Icons.delete,
-                                      color: Colors.red,
-                                      onTap: () async {
-                                        final ok = await showDialog<bool>(
-                                          context: context,
-                                          builder: (c) => AlertDialog(
-                                            title: const Text(
-                                                'Delete Sub Family'),
-                                            content: const Text(
-                                              'Are you sure? This deletes all members.',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(c, false),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.red,
-                                                ),
-                                                onPressed: () =>
-                                                    Navigator.pop(c, true),
-                                                child: const Text('Delete'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-  
-                                        if (ok == true) {
-                                          await _subFamilyService
-                                              .deleteSubFamily(
-                                            mainFamilyDocId:
-                                                widget.mainFamilyDocId,
-                                            subFamilyDocId: subFamily.id,
-                                          );
-                                        }
-                                      },
-                                    ),
                                   ],
                                 ),
-                            ],
+
+                                const SizedBox(height: 6),
+
+                                // REAL-TIME MEMBER COUNT
+                                FutureBuilder<int>(
+                                  future: MemberService()
+                                      .getSubFamilyMemberCount(
+                                    widget.mainFamilyDocId,
+                                    subFamily.id,
+                                  ),
+                                  builder: (context, countSnap) {
+                                    final count = countSnap.data ?? 0;
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.people,
+                                            size: 12,
+                                            color: Colors.purple.shade700,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '$count members',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.purple.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+
+                                const Spacer(),
+
+                                // ACTIONS
+                                if (_userRole == 'admin')
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildCompactAction(
+                                          icon: Icons.edit,
+                                          color: Colors.blue,
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    EditSubFamilyScreen(
+                                                  subFamily: subFamily,
+                                                  mainFamilyDocId:
+                                                      widget.mainFamilyDocId,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        _buildCompactAction(
+                                          icon: isActive
+                                              ? Icons.check_circle
+                                              : Icons.block,
+                                          color: isActive
+                                              ? Colors.green
+                                              : Colors.grey,
+                                          onTap: () async {
+                                            await _subFamilyService
+                                                .toggleSubFamilyStatus(
+                                              mainFamilyDocId:
+                                                  widget.mainFamilyDocId,
+                                              subFamilyDocId: subFamily.id,
+                                            );
+                                          },
+                                        ),
+                                        _buildCompactAction(
+                                          icon: Icons.delete,
+                                          color: Colors.red,
+                                          onTap: () async {
+                                            final ok = await showDialog<bool>(
+                                              context: context,
+                                              builder: (c) => AlertDialog(
+                                                title: const Text(
+                                                    'Delete Sub Family'),
+                                                content: const Text(
+                                                  'Are you sure? This deletes all members.',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(c, false),
+                                                    child: const Text('Cancel'),
+                                                  ),
+                                                  ElevatedButton(
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ),
+                                                    onPressed: () =>
+                                                        Navigator.pop(c, true),
+                                                    child: const Text('Delete'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+
+                                            if (ok == true) {
+                                              await _subFamilyService
+                                                  .deleteSubFamily(
+                                                mainFamilyDocId:
+                                                    widget.mainFamilyDocId,
+                                                subFamilyDocId: subFamily.id,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -375,7 +472,11 @@ class _SubFamilyListScreenState extends State<SubFamilyListScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Icon(icon, size: 18, color: color),
       ),
     );

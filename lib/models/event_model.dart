@@ -11,6 +11,11 @@ class EventModel {
   final String createdBy;
   final String familyDocId;
   final DateTime createdAt;
+  
+  // Visibility settings
+  final String visibilityType; // 'all' | 'selected' | 'group'
+  final List<String> visibleToMemberIds; // Member IDs who can see this event
+  final List<String> visibleToGroupIds; // Group IDs who can see this event
 
   EventModel({
     required this.id,
@@ -23,6 +28,9 @@ class EventModel {
     required this.createdBy,
     this.familyDocId = '',
     required this.createdAt,
+    this.visibilityType = 'all',
+    this.visibleToMemberIds = const [],
+    this.visibleToGroupIds = const [],
   });
 
   // ---------------- TO MAP ----------------
@@ -38,6 +46,9 @@ class EventModel {
       'createdBy': createdBy,
       'familyDocId': familyDocId,
       'createdAt': createdAt,
+      'visibilityType': visibilityType,
+      'visibleToMemberIds': visibleToMemberIds,
+      'visibleToGroupIds': visibleToGroupIds,
     };
   }
 
@@ -54,6 +65,9 @@ class EventModel {
       createdBy: data['createdBy'] ?? '',
       familyDocId: data['familyDocId'] ?? '',
       createdAt: (data['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
+      visibilityType: data['visibilityType'] ?? 'all',
+      visibleToMemberIds: List<String>.from(data['visibleToMemberIds'] ?? []),
+      visibleToGroupIds: List<String>.from(data['visibleToGroupIds'] ?? []),
     );
   }
 }

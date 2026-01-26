@@ -8,6 +8,11 @@ import '../../models/event_model.dart';
 import '../../services/event_service.dart';
 import '../../services/language_service.dart';
 import '../../services/theme_service.dart';
+import '../../services/session_manager.dart';
+import '../../services/group_service.dart';
+import '../../services/member_service.dart';
+import '../../widgets/animation_utils.dart';
+import 'event_detail_screen.dart';
 
 class UserCalendarScreen extends StatefulWidget {
   const UserCalendarScreen({super.key});
@@ -16,18 +21,27 @@ class UserCalendarScreen extends StatefulWidget {
   State<UserCalendarScreen> createState() => _UserCalendarScreenState();
 }
 
-class _UserCalendarScreenState extends State<UserCalendarScreen> {
+class _UserCalendarScreenState extends State<UserCalendarScreen>
+    with SingleTickerProviderStateMixin {
   final EventService _eventService = EventService();
+  final GroupService _groupService = GroupService();
+  final MemberService _memberService = MemberService();
   DateTime _focusedMonth = DateTime.now();
   DateTime? _selectedDay;
   List<EventModel> _allEvents = [];
   List<EventModel> _filteredEvents = [];
   List<EventModel> _selectedDayEvents = [];
+  List<String> _currentGroupIds = [];
 
   // Advanced options
   bool _showPastEvents = true;
   String? _selectedEventType;
   bool _enableReminders = true;
+
+  // Animation controller for month transitions
+  late AnimationController _monthTransitionController;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
 
   // Month range: -12 to +12 months from current
   DateTime get _minMonth {
@@ -45,16 +59,91 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
     super.initState();
     _selectedDay = DateTime.now();
     _loadEvents();
+    
+    // Initialize month transition animations
+    _monthTransitionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.1, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _monthTransitionController,
+      curve: Curves.easeOutCubic,
+    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _monthTransitionController,
+        curve: Curves.easeOut,
+      ),
+    );
+    _monthTransitionController.forward();
   }
 
-  void _loadEvents() {
-    _eventService.streamAllEvents().listen((events) {
-      setState(() {
-        _allEvents = events;
-        _applyFilters();
-        _updateSelectedDayEvents();
+  @override
+  void dispose() {
+    _monthTransitionController.dispose();
+    super.dispose();
+  }
+
+  void _loadEvents() async {
+    try {
+      final memberId = await SessionManager.getMemberId();
+      final familyDocId = await SessionManager.getFamilyDocId();
+      
+      // Load user's groups for visibility filtering
+      if (familyDocId != null && memberId != null) {
+        try {
+          final groups = await _groupService.streamGroups(familyDocId).first;
+          final allMembers = await _memberService.getAllMembers();
+          final currentMember = allMembers.firstWhere(
+            (m) => m.id == memberId || m.mid == memberId,
+            orElse: () => throw Exception('Member not found'),
+          );
+          
+          // Get groups where current member is a member
+          final userGroupIds = groups
+              .where((g) => g.memberIds.contains(currentMember.id) || 
+                           g.memberIds.contains(currentMember.mid))
+              .map((g) => g.id)
+              .toList();
+          
+          if (mounted) {
+            setState(() {
+              _currentGroupIds = userGroupIds;
+            });
+          }
+        } catch (e) {
+          debugPrint('Error loading groups: $e');
+        }
+      }
+      
+      _eventService.streamAllEvents(
+        currentMemberId: memberId,
+        currentGroupIds: _currentGroupIds.isNotEmpty ? _currentGroupIds : null,
+      ).listen((events) {
+        if (mounted) {
+          setState(() {
+            _allEvents = events;
+            _applyFilters();
+            _updateSelectedDayEvents();
+          });
+        }
       });
-    });
+    } catch (e) {
+      debugPrint('Error loading events: $e');
+      // Fallback to loading all events without filtering
+      _eventService.streamAllEvents().listen((events) {
+        if (mounted) {
+          setState(() {
+            _allEvents = events;
+            _applyFilters();
+            _updateSelectedDayEvents();
+          });
+        }
+      });
+    }
   }
 
   void _applyFilters() {
@@ -100,13 +189,19 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
   IconData _getEventTypeIcon(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
-        return Icons.business;
+        return Icons.meeting_room;
       case 'celebration':
         return Icons.celebration;
       case 'reminder':
-        return Icons.notifications;
+        return Icons.alarm;
+      case 'puja':
+        return Icons.temple_hindu;
+      case 'function':
+        return Icons.party_mode;
+      case 'yar':
+        return Icons.handshake;
       default:
-        return Icons.event;
+        return Icons.event_available;
     }
   }
 
@@ -123,12 +218,12 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
         backgroundColor: Colors.blue.shade900,
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
+            icon: const Icon(Icons.tune),
             tooltip: lang.translate('filter_events'),
             onPressed: () => _showFilterDialog(context, lang),
           ),
           IconButton(
-            icon: const Icon(Icons.today),
+            icon: const Icon(Icons.calendar_today),
             tooltip: lang.translate('today'),
             onPressed: () {
               setState(() {
@@ -139,23 +234,40 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.more_vert),
             tooltip: lang.translate('settings'),
             onPressed: () => _showAdvancedOptions(context, lang),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Modern Month Header
-          _buildModernMonthHeader(lang, isDark),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Modern Month Header with animation
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 100),
+              child: _buildModernMonthHeader(lang, isDark),
+            ),
 
-          // Calendar Grid
-          Expanded(flex: 3, child: _buildModernCalendarGrid(lang, isDark)),
+            // Calendar Grid with slide animation
+            SizedBox(
+              height: 400,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: _buildModernCalendarGrid(lang, isDark),
+                ),
+              ),
+            ),
 
-          // Events List for Selected Day
-          Expanded(flex: 2, child: _buildEventsList(lang, isDark)),
-        ],
+            // Events List for Selected Day with animation
+            FadeInAnimation(
+              delay: const Duration(milliseconds: 300),
+              child: _buildEventsList(lang, isDark),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -193,7 +305,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
         children: [
           IconButton(
             icon: Icon(
-              Icons.chevron_left,
+              Icons.arrow_back_ios_new,
               color: _canGoBack ? Colors.blue.shade900 : Colors.grey,
             ),
             onPressed: _canGoBack ? _goToPreviousMonth : null,
@@ -236,7 +348,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
           ),
           IconButton(
             icon: Icon(
-              Icons.chevron_right,
+              Icons.arrow_forward_ios,
               color: _canGoForward ? Colors.blue.shade900 : Colors.grey,
             ),
             onPressed: _canGoForward ? _goToNextMonth : null,
@@ -328,60 +440,21 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
                   final isToday = _isSameDay(currentDay, DateTime.now());
                   final hasEvents = dayEvents.isNotEmpty;
 
-                  return GestureDetector(
+                  return _AnimatedDayCell(
+                    dayNumber: dayNumber,
+                    isSelected: isSelected,
+                    isToday: isToday,
+                    hasEvents: hasEvents,
+                    isDark: isDark,
+                    eventColor: hasEvents
+                        ? _getEventTypeColor(dayEvents.first.type)
+                        : null,
                     onTap: () {
                       setState(() {
                         _selectedDay = currentDay;
                         _updateSelectedDayEvents();
                       });
                     },
-                    child: Container(
-                      margin: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.blue.shade900
-                            : isToday
-                            ? Colors.blue.shade50
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: isToday && !isSelected
-                            ? Border.all(color: Colors.blue.shade300, width: 2)
-                            : null,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            dayNumber.toString(),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: isSelected || isToday
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: isSelected
-                                  ? Colors.white
-                                  : isToday
-                                  ? Colors.blue.shade900
-                                  : isDark
-                                  ? Colors.white
-                                  : Colors.black87,
-                            ),
-                          ),
-                          if (hasEvents)
-                            Container(
-                              margin: const EdgeInsets.only(top: 2),
-                              height: 4,
-                              width: 4,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Colors.white
-                                    : _getEventTypeColor(dayEvents.first.type),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
                   );
                 },
               ),
@@ -413,7 +486,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Icon(Icons.event_note, color: Colors.blue.shade900, size: 20),
+                Icon(Icons.calendar_month, color: Colors.blue.shade900, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   _selectedDay != null
@@ -455,7 +528,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.event_busy,
+                          Icons.event_available_outlined,
                           size: 64,
                           color: Colors.grey.shade400,
                         ),
@@ -478,19 +551,21 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
                       final eventColor = _getEventTypeColor(event.type);
                       final isPast = event.date.isBefore(DateTime.now());
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: isDark
+                      return SlideInAnimation(
+                        delay: Duration(milliseconds: 50 * index),
+                        beginOffset: const Offset(0.2, 0),
+                        child: AnimatedCard(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          backgroundColor: isDark
                               ? Colors.grey.shade700
                               : eventColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: 12,
                           border: Border.all(
                             color: eventColor.withOpacity(0.3),
                             width: 1,
                           ),
-                        ),
-                        child: ListTile(
+                          onTap: () => _showEventDetails(context, event, lang),
+                          child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
@@ -581,12 +656,12 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
                           ),
                           trailing: isPast
                               ? Icon(
-                                  Icons.check_circle,
+                                  Icons.check_circle_outline,
                                   color: Colors.grey.shade400,
                                   size: 20,
                                 )
                               : null,
-                          onTap: () => _showEventDetails(context, event, lang),
+                          ),
                         ),
                       );
                     },
@@ -627,7 +702,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.remove),
+                    icon: const Icon(Icons.remove_circle_outline),
                     onPressed: () {
                       final newYear = DateTime(
                         _focusedMonth.year - 1,
@@ -651,7 +726,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(Icons.add_circle_outline),
                     onPressed: () {
                       final newYear = DateTime(
                         _focusedMonth.year + 1,
@@ -841,7 +916,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.download),
+              leading: const Icon(Icons.file_download),
               title: Text(lang.translate('export_calendar')),
               onTap: () {
                 Navigator.pop(context);
@@ -865,99 +940,14 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
     EventModel event,
     LanguageService lang,
   ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _getEventTypeColor(event.type),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                _getEventTypeIcon(event.type),
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(event.title, style: const TextStyle(fontSize: 18)),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (event.time.isNotEmpty) ...[
-              _buildDetailRow(
-                Icons.access_time,
-                lang.translate('time'),
-                event.time,
-              ),
-              const SizedBox(height: 8),
-            ],
-            if (event.location.isNotEmpty) ...[
-              _buildDetailRow(
-                Icons.location_on,
-                lang.translate('location'),
-                event.location,
-              ),
-              const SizedBox(height: 8),
-            ],
-            if (event.description.isNotEmpty) ...[
-              Text(
-                lang.translate('description'),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(event.description),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(lang.translate('close')),
-          ),
-        ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EventDetailScreen(event: event),
       ),
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: Colors.grey.shade600),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   List<EventModel> _getEventsForDay(DateTime day) {
     return _filteredEvents.where((event) {
@@ -976,21 +966,28 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
   }
 
   void _goToPreviousMonth() {
-    setState(() {
-      final newMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
-      if (newMonth.isAfter(_minMonth) || newMonth.isAtSameMomentAs(_minMonth)) {
-        _focusedMonth = newMonth;
-      }
+    _monthTransitionController.reverse().then((_) {
+      setState(() {
+        final newMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1);
+        if (newMonth.isAfter(_minMonth) ||
+            newMonth.isAtSameMomentAs(_minMonth)) {
+          _focusedMonth = newMonth;
+        }
+      });
+      _monthTransitionController.forward();
     });
   }
 
   void _goToNextMonth() {
-    setState(() {
-      final newMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
-      if (newMonth.isBefore(_maxMonth) ||
-          newMonth.isAtSameMomentAs(_maxMonth)) {
-        _focusedMonth = newMonth;
-      }
+    _monthTransitionController.reverse().then((_) {
+      setState(() {
+        final newMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
+        if (newMonth.isBefore(_maxMonth) ||
+            newMonth.isAtSameMomentAs(_maxMonth)) {
+          _focusedMonth = newMonth;
+        }
+      });
+      _monthTransitionController.forward();
     });
   }
 
@@ -1004,5 +1001,115 @@ class _UserCalendarScreenState extends State<UserCalendarScreen> {
     final nextMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1);
     return nextMonth.isBefore(_maxMonth) ||
         nextMonth.isAtSameMomentAs(_maxMonth);
+  }
+}
+
+/// Animated day cell widget for calendar
+class _AnimatedDayCell extends StatefulWidget {
+  final int dayNumber;
+  final bool isSelected;
+  final bool isToday;
+  final bool hasEvents;
+  final bool isDark;
+  final Color? eventColor;
+  final VoidCallback onTap;
+
+  const _AnimatedDayCell({
+    required this.dayNumber,
+    required this.isSelected,
+    required this.isToday,
+    required this.hasEvents,
+    required this.isDark,
+    this.eventColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedDayCell> createState() => _AnimatedDayCellState();
+}
+
+class _AnimatedDayCellState extends State<_AnimatedDayCell>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          margin: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? Colors.blue.shade900
+                : widget.isToday
+                    ? Colors.blue.shade50
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: widget.isToday && !widget.isSelected
+                ? Border.all(color: Colors.blue.shade300, width: 2)
+                : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                widget.dayNumber.toString(),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: widget.isSelected || widget.isToday
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                  color: widget.isSelected
+                      ? Colors.white
+                      : widget.isToday
+                          ? Colors.blue.shade900
+                          : widget.isDark
+                              ? Colors.white
+                              : Colors.black87,
+                ),
+              ),
+              if (widget.hasEvents)
+                Container(
+                  margin: const EdgeInsets.only(top: 2),
+                  height: 4,
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: widget.isSelected
+                        ? Colors.white
+                        : widget.eventColor ?? Colors.blue,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
