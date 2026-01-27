@@ -29,6 +29,8 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
   String? _selectedCity;
   String? _selectedFamily;
   String? _selectedMaritalStatus;
+  String? _selectedAgeRange;
+  bool _showFilters = false;
 
   // Available options
   List<String> _bloodGroups = [];
@@ -109,11 +111,26 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
           _selectedMaritalStatus!.isEmpty ||
           member.marriageStatus == _selectedMaritalStatus;
 
+      // Age range filter
+      bool matchesAgeRange = true;
+      if (_selectedAgeRange != null && _selectedAgeRange!.isNotEmpty) {
+        final age = member.age;
+        switch (_selectedAgeRange) {
+          case 'Under 18': matchesAgeRange = age < 18; break;
+          case '18-25': matchesAgeRange = age >= 18 && age <= 25; break;
+          case '26-35': matchesAgeRange = age >= 26 && age <= 35; break;
+          case '36-45': matchesAgeRange = age >= 36 && age <= 45; break;
+          case '46-60': matchesAgeRange = age >= 46 && age <= 60; break;
+          case '60+': matchesAgeRange = age > 60; break;
+        }
+      }
+
       return matchesSearch &&
           matchesBloodGroup &&
           matchesCity &&
           matchesFamily &&
-          matchesMaritalStatus;
+          matchesMaritalStatus &&
+          matchesAgeRange;
     }).toList();
 
     setState(() {
@@ -127,6 +144,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
       _selectedCity = null;
       _selectedFamily = null;
       _selectedMaritalStatus = null;
+      _selectedAgeRange = null;
       _searchController.clear();
     });
     _applyFilters();
@@ -143,23 +161,6 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
       body: Column(
 
       children: [
-        const SizedBox(height: 24), // Move content down
-        // Filter Header (Moved from AppBar actions to body)
-        if (_selectedBloodGroup != null ||
-            _selectedCity != null ||
-            _selectedFamily != null ||
-            _selectedMaritalStatus != null ||
-            _searchController.text.isNotEmpty)
-          Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 16, top: 8),
-            color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-            child: TextButton.icon(
-              icon: const Icon(Icons.clear_all),
-              label: Text(lang.translate('clear_filters')),
-              onPressed: _clearFilters,
-            ),
-          ),
           // Search Bar
           Container(
             padding: const EdgeInsets.all(16),
@@ -187,72 +188,101 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
           ),
 
           // Filters
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: isDark ? Colors.grey.shade800 : Colors.white,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+          if (_showFilters)
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: isDark ? Colors.grey.shade800 : Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildFilterChip(
-                    lang.translate('blood_group'),
-                    _selectedBloodGroup,
-                    _bloodGroups,
-                    (value) {
-                      setState(() {
-                        _selectedBloodGroup = value;
-                      });
-                      _applyFilters();
-                    },
-                    isDark,
-                    lang,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Filters',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      TextButton.icon(
+                        icon: const Icon(Icons.clear_all, size: 20),
+                        label: Text(lang.translate('clear_filters')),
+                        onPressed: _clearFilters,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    lang.translate('city'),
-                    _selectedCity,
-                    _cities,
-                    (value) {
-                      setState(() {
-                        _selectedCity = value;
-                      });
-                      _applyFilters();
-                    },
-                    isDark,
-                    lang,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    lang.translate('family'),
-                    _selectedFamily,
-                    _families,
-                    (value) {
-                      setState(() {
-                        _selectedFamily = value;
-                      });
-                      _applyFilters();
-                    },
-                    isDark,
-                    lang,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    lang.translate('marital_status'),
-                    _selectedMaritalStatus,
-                    ['married', 'unmarried'],
-                    (value) {
-                      setState(() {
-                        _selectedMaritalStatus = value;
-                      });
-                      _applyFilters();
-                    },
-                    isDark,
-                    lang,
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterChip(
+                          lang.translate('blood_group'),
+                          _selectedBloodGroup,
+                          _bloodGroups,
+                          (value) {
+                            setState(() => _selectedBloodGroup = value);
+                            _applyFilters();
+                          },
+                          isDark,
+                          lang,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          lang.translate('city'),
+                          _selectedCity,
+                          _cities,
+                          (value) {
+                            setState(() => _selectedCity = value);
+                            _applyFilters();
+                          },
+                          isDark,
+                          lang,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          lang.translate('family'),
+                          _selectedFamily,
+                          _families,
+                          (value) {
+                            setState(() => _selectedFamily = value);
+                            _applyFilters();
+                          },
+                          isDark,
+                          lang,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          'Age Range',
+                          _selectedAgeRange,
+                          ['Under 18', '18-25', '26-35', '36-45', '46-60', '60+'],
+                          (value) {
+                            setState(() => _selectedAgeRange = value);
+                            _applyFilters();
+                          },
+                          isDark,
+                          lang,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          lang.translate('marital_status'),
+                          _selectedMaritalStatus,
+                          ['married', 'unmarried'],
+                          (value) {
+                            setState(() => _selectedMaritalStatus = value);
+                            _applyFilters();
+                          },
+                          isDark,
+                          lang,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
 
           // Results Count
           Container(
@@ -305,11 +335,27 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pushNamed(context, '/user/qr-scanner'),
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.qr_code_scanner),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'filter_fab',
+            onPressed: () {
+              setState(() => _showFilters = !_showFilters);
+            },
+            backgroundColor: _showFilters ? Colors.orange : Colors.blue.shade700,
+            foregroundColor: Colors.white,
+            child: Icon(_showFilters ? Icons.filter_list_off : Icons.filter_list),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: 'qr_fab',
+            onPressed: () => Navigator.pushNamed(context, '/user/qr-scanner'),
+            backgroundColor: Colors.blue.shade900,
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.qr_code_scanner),
+          ),
+        ],
       ),
 
     );

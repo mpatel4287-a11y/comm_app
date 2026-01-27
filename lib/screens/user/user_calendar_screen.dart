@@ -10,7 +10,6 @@ import '../../services/language_service.dart';
 import '../../services/theme_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/group_service.dart';
-import '../../services/member_service.dart';
 import '../../widgets/animation_utils.dart';
 import 'event_detail_screen.dart';
 
@@ -25,7 +24,6 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
     with SingleTickerProviderStateMixin {
   final EventService _eventService = EventService();
   final GroupService _groupService = GroupService();
-  final MemberService _memberService = MemberService();
   DateTime _focusedMonth = DateTime.now();
   DateTime? _selectedDay;
   List<EventModel> _allEvents = [];
@@ -89,23 +87,18 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
 
   void _loadEvents() async {
     try {
-      final memberId = await SessionManager.getMemberId();
+      final memberDocId = await SessionManager.getMemberDocId();
       final familyDocId = await SessionManager.getFamilyDocId();
+      final role = await SessionManager.getRole();
       
       // Load user's groups for visibility filtering
-      if (familyDocId != null && memberId != null) {
+      if (familyDocId != null && memberDocId != null) {
         try {
           final groups = await _groupService.streamGroups(familyDocId).first;
-          final allMembers = await _memberService.getAllMembers();
-          final currentMember = allMembers.firstWhere(
-            (m) => m.id == memberId || m.mid == memberId,
-            orElse: () => throw Exception('Member not found'),
-          );
           
-          // Get groups where current member is a member
+          // Get groups where current member is a member (using document ID)
           final userGroupIds = groups
-              .where((g) => g.memberIds.contains(currentMember.id) || 
-                           g.memberIds.contains(currentMember.mid))
+              .where((g) => g.memberIds.contains(memberDocId))
               .map((g) => g.id)
               .toList();
           
@@ -120,8 +113,9 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
       }
       
       _eventService.streamAllEvents(
-        currentMemberId: memberId,
+        currentMemberId: memberDocId,
         currentGroupIds: _currentGroupIds.isNotEmpty ? _currentGroupIds : null,
+        userRole: role,
       ).listen((events) {
         if (mounted) {
           setState(() {
@@ -133,7 +127,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
       });
     } catch (e) {
       debugPrint('Error loading events: $e');
-      // Fallback to loading all events without filtering
+      // Fallback
       _eventService.streamAllEvents().listen((events) {
         if (mounted) {
           setState(() {
@@ -521,8 +515,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
               ],
             ),
           ),
-          Expanded(
-            child: _selectedDayEvents.isEmpty
+          _selectedDayEvents.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -544,6 +537,8 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
                     ),
                   )
                 : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _selectedDayEvents.length,
                     itemBuilder: (context, index) {
@@ -666,7 +661,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
                       );
                     },
                   ),
-          ),
+
         ],
       ),
     );

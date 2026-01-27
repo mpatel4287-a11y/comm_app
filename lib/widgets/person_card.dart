@@ -84,7 +84,10 @@ class _PersonCardState extends State<PersonCard>
               scale: _scaleAnimation.value,
               child: Container(
                 width: widget.width,
-                height: widget.height,
+                constraints: BoxConstraints(
+                  minHeight: widget.height,
+                  maxWidth: widget.width,
+                ),
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -102,19 +105,20 @@ class _PersonCardState extends State<PersonCard>
                   ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildPhoto(),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       _buildName(),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       if (widget.person.age != null || widget.person.calculatedAge > 0)
                         _buildAge(),
                       if (widget.person.mid != null && widget.person.mid!.isNotEmpty)
                         _buildMID(),
+                      const SizedBox(height: 2),
                       if (widget.person.relationToHead != null && 
                           widget.person.relationToHead!.isNotEmpty &&
                           widget.person.relationToHead != 'none')

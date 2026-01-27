@@ -147,7 +147,41 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
           relationToHead: parent.relationToHead,
           parentIds: parent.parentIds,
           childrenIds: entry.value,
+          spouseId: parent.spouseId,
         );
+      }
+    }
+
+    // Match spouses
+    final List<Person> allPeople = personMap.values.toList();
+    for (final person in allPeople) {
+      if (person.spouseId != null) continue;
+
+      if (person.relationToHead?.toLowerCase() == 'head') {
+        final wife = allPeople.firstWhere(
+          (p) => p.relationToHead?.toLowerCase() == 'wife' && p.spouseId == null,
+          orElse: () => allPeople.firstWhere(
+            (p) => p.relationToHead?.toLowerCase() == 'husband' && p.spouseId == null && p.mid != person.mid,
+            orElse: () => person,
+          ),
+        );
+        if (wife != person) {
+          personMap[person.mid!] = _linkSpouses(person, wife);
+          personMap[wife.mid!] = _linkSpouses(wife, person);
+        }
+      } else if (person.relationToHead?.toLowerCase() == 'son') {
+        // Try to find a daughter-in-law that hasn't been matched
+        // In a more complex system, we'd check if they have common children.
+        // For now, we'll match by order if there are multiple.
+        try {
+          final dil = allPeople.firstWhere(
+            (p) => p.relationToHead?.toLowerCase() == 'daughter_in_law' && p.spouseId == null,
+          );
+          personMap[person.mid!] = _linkSpouses(person, dil);
+          personMap[dil.mid!] = _linkSpouses(dil, person);
+        } catch (e) {
+          // No unmatched daughter-in-law found
+        }
       }
     }
 
@@ -171,32 +205,18 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
       }
     }
 
-    // Build generations starting from head
     final generations = <List<Person>>[];
     final processed = <String>{};
 
-    // Generation 0: Head of family and spouse
+    // Build generations starting from head
     if (headMember != null && headMember.mid.isNotEmpty && personMap.containsKey(headMember.mid)) {
       final headPerson = personMap[headMember.mid]!;
       final generation0 = [headPerson];
-      processed.add(headMember.mid);
+      processed.add(headPerson.mid!);
 
-      // Add spouse if exists (relationToHead == 'wife' or 'husband')
-      try {
-        final spouse = members.firstWhere(
-          (m) =>
-              m.relationToHead == 'wife' ||
-              (m.relationToHead == 'husband' && m.gender.toLowerCase() == 'male'),
-        );
-
-        if (spouse.mid.isNotEmpty &&
-            personMap.containsKey(spouse.mid) &&
-            !processed.contains(spouse.mid)) {
-          generation0.add(personMap[spouse.mid]!);
-          processed.add(spouse.mid);
-        }
-      } catch (e) {
-        // No spouse found, continue without spouse
+      if (headPerson.spouseId != null && personMap.containsKey(headPerson.spouseId)) {
+        generation0.add(personMap[headPerson.spouseId!]!);
+        processed.add(headPerson.spouseId!);
       }
 
       generations.add(generation0);
@@ -205,42 +225,67 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
     // Build subsequent generations
     int currentGenIndex = 0;
     while (currentGenIndex < generations.length) {
-      final currentGeneration = generations[currentGenIndex];
-      final nextGeneration = <Person>[];
+      final currentLevel = generations[currentGenIndex];
+      final nextLevel = <Person>[];
 
-      for (final person in currentGeneration) {
+      // Add children of each person in the current level
+      for (final person in currentLevel) {
         if (person.childrenIds.isNotEmpty) {
           for (final childMid in person.childrenIds) {
-            if (personMap.containsKey(childMid) &&
-                !processed.contains(childMid)) {
-              nextGeneration.add(personMap[childMid]!);
-              processed.add(childMid);
+            if (personMap.containsKey(childMid) && !processed.contains(childMid)) {
+              final child = personMap[childMid]!;
+              nextLevel.add(child);
+              processed.add(child.mid!);
+
+              // Also add child's spouse if exists and in the same generation
+              if (child.spouseId != null && 
+                  personMap.containsKey(child.spouseId) && 
+                  !processed.contains(child.spouseId)) {
+                nextLevel.add(personMap[child.spouseId!]!);
+                processed.add(child.spouseId!);
+              }
             }
           }
         }
       }
 
-      if (nextGeneration.isNotEmpty) {
-        generations.add(nextGeneration);
+      if (nextLevel.isNotEmpty) {
+        generations.add(nextLevel);
         currentGenIndex++;
       } else {
         break;
       }
     }
 
-    // Add any remaining members (orphans or those without proper parent links) to the last generation
-    final remainingMembers = personMap.values
-        .where((p) => !processed.contains(p.mid))
-        .toList();
-    if (remainingMembers.isNotEmpty) {
+    // Add any remaining members
+    final remaining = personMap.values.where((p) => !processed.contains(p.mid)).toList();
+    if (remaining.isNotEmpty) {
       if (generations.isEmpty) {
-        generations.add(remainingMembers);
-      } else if (generations.isNotEmpty) {
-        generations.last.addAll(remainingMembers);
+        generations.add(remaining);
+      } else {
+        generations.last.addAll(remaining);
       }
     }
 
     return generations;
+  }
+
+  Person _linkSpouses(Person p1, Person p2) {
+    return Person(
+      id: p1.id,
+      firstName: p1.firstName,
+      lastName: p1.lastName,
+      birthYear: p1.birthYear,
+      gender: p1.gender,
+      photoUrl: p1.photoUrl,
+      details: p1.details,
+      age: p1.age,
+      mid: p1.mid,
+      relationToHead: p1.relationToHead,
+      parentIds: p1.parentIds,
+      childrenIds: p1.childrenIds,
+      spouseId: p2.mid,
+    );
   }
 
   @override
@@ -257,6 +302,7 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
         backgroundColor: const Color(0xFF4A90E2),
         elevation: 0,
       ),
+      backgroundColor: const Color(0xFFE8E8E8),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _generations.isEmpty

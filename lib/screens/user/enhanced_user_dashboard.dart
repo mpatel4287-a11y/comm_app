@@ -16,7 +16,7 @@ import '../../services/group_service.dart';
 import '../../widgets/animation_utils.dart';
 
 
-import 'family_tree_view.dart';
+// import 'family_tree_view.dart';
 import 'member_detail_screen.dart';
 import 'user_calendar_screen.dart';
 import 'user_notification_screen.dart';
@@ -45,7 +45,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   Map<String, dynamic> _stats = {};
   bool _loading = true;
   String? _familyDocId;
-  String? _familyName;
+  // String? _familyName;
 
 
   MemberModel? _currentUser;
@@ -70,14 +70,14 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
 
     try {
       final familyDocId = await SessionManager.getFamilyDocId();
-      final familyName = await SessionManager.getFamilyName();
+      // final familyName = await SessionManager.getFamilyName();
       final memberDocId = await SessionManager.getMemberDocId();
       final subFamilyDocId = await SessionManager.getSubFamilyDocId();
       final role = await SessionManager.getRole();
       
       _userRole = role;
       _familyDocId = familyDocId;
-      _familyName = familyName;
+      // _familyName = familyName;
 
       // Load current user
       if (memberDocId != null && familyDocId != null) {
@@ -156,11 +156,23 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
       myFamilyCount = _allMembers.where((m) => m.familyDocId == _familyDocId).length;
     }
 
+    // Calculate firm stats
+    final Map<String, int> firmsMap = {};
+    for (final member in _allMembers) {
+      for (final firm in member.firms) {
+        final firmName = firm['name'] ?? '';
+        if (firmName.isNotEmpty) {
+          firmsMap[firmName] = (firmsMap[firmName] ?? 0) + 1;
+        }
+      }
+    }
+
     setState(() {
       _stats['total'] = total;
       _stats['active'] = active;
       _stats['newThisMonth'] = newThisMonth;
       _stats['myFamilyCount'] = myFamilyCount;
+      _stats['totalFirms'] = firmsMap.length;
     });
   }
 
@@ -317,22 +329,22 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
           onDestinationSelected: (index) {
             setState(() => _selectedIndex = index);
           },
-          indicatorColor: Colors.blue.shade900.withOpacity(0.2),
+          indicatorColor: const Color(0xFF122C4F).withOpacity(0.2), // Midnight indicator
           animationDuration: const Duration(milliseconds: 300),
           destinations: [
             NavigationDestination(
               icon: const Icon(Icons.event_note_outlined),
-              selectedIcon: Icon(Icons.event_note, color: Colors.blue.shade900),
+              selectedIcon: const Icon(Icons.event_note, color: Color(0xFF122C4F)),
               label: lang.translate('events'),
             ),
             NavigationDestination(
               icon: const Icon(Icons.connect_without_contact_outlined),
-              selectedIcon: Icon(Icons.connect_without_contact, color: Colors.blue.shade900),
+              selectedIcon: const Icon(Icons.connect_without_contact, color: Color(0xFF122C4F)),
               label: lang.translate('connect'),
             ),
             NavigationDestination(
               icon: const Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard, color: Colors.blue.shade900),
+              selectedIcon: const Icon(Icons.dashboard, color: Color(0xFF122C4F)),
               label: lang.translate('home'),
             ),
             NavigationDestination(
@@ -354,7 +366,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   return Badge(
                     label: Text(unreadCount.toString()),
                     isLabelVisible: unreadCount > 0,
-                    child: Icon(Icons.notifications_active, color: Colors.blue.shade900),
+                    child: const Icon(Icons.notifications_active, color: Color(0xFF122C4F)),
                   );
                 },
               ),
@@ -362,7 +374,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             ),
             NavigationDestination(
               icon: const Icon(Icons.account_circle_outlined),
-              selectedIcon: Icon(Icons.account_circle, color: Colors.blue.shade900),
+              selectedIcon: const Icon(Icons.account_circle, color: Color(0xFF122C4F)),
               label: lang.translate('profile'),
             ),
           ],
@@ -385,19 +397,19 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             expandedHeight: 60.0,
             floating: false,
             pinned: true,
-            backgroundColor: Colors.blue.shade900,
+            backgroundColor: const Color(0xFF122C4F),
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsets.only(left: 16, bottom: 12),
               title: Text(
                 '${lang.translate('welcome')}, ${_currentUser?.fullName.split(' ')[0] ?? 'User'}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBF9E4)),
               ),
               background: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.blue.shade800, Colors.blue.shade900],
+                    colors: [Color(0xFF122C4F), Color(0xFF0D1E36)],
                   ),
                 ),
               ),
@@ -448,27 +460,15 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   const SizedBox(height: 16),
                 ],
                 
-                // Section: Family Tree with animation
+                // Section: Firms with animation
                 SlideInAnimation(
                   delay: const Duration(milliseconds: 250),
                   beginOffset: const Offset(0.1, 0),
                   child: _buildSectionHeader(
-                    lang.translate('family_tree'),
-                    lang.translate('view_ancestry'),
-                    Icons.account_tree_outlined,
-                    () {
-                      if (_familyDocId != null && _familyName != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => FamilyTreeView(
-                              mainFamilyDocId: _familyDocId!,
-                              familyName: _familyName!,
-                            ),
-                          ),
-                        );
-                      }
-                    },
+                    lang.translate('firms'),
+                    'View all firms and members',
+                    Icons.store_outlined,
+                    () => Navigator.pushNamed(context, '/admin/firms'),
                     lang,
                     isDark,
                   ),
@@ -476,7 +476,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                 SlideInAnimation(
                   delay: const Duration(milliseconds: 300),
                   beginOffset: const Offset(0.1, 0),
-                  child: _buildFamilyStats(lang, isDark),
+                  child: _buildFirmStats(lang, isDark),
                 ),
 
                 // Section: Community Activity (Events) with animation
@@ -612,8 +612,8 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   ) {
     return AnimatedCard(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
-      borderRadius: 12,
+      backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+      borderRadius: 20,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -676,10 +676,10 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF5B88B2).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: Colors.blue.shade900, size: 20),
+                child: Icon(icon, color: const Color(0xFF5B88B2), size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -752,8 +752,8 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   ) {
     return AnimatedCard(
       margin: const EdgeInsets.only(right: 12),
-      backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
-      borderRadius: 12,
+      backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+      borderRadius: 20,
       onTap: () => _navigateToMember(member),
       child: Container(
         width: 160,
@@ -765,12 +765,15 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               height: 120,
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+                  top: Radius.circular(20),
                 ),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Colors.blue.shade400, Colors.blue.shade700],
+                  colors: [
+                    const Color(0xFF122C4F).withOpacity(0.8),
+                    const Color(0xFF122C4F),
+                  ],
                 ),
               ),
               child: Stack(
@@ -782,7 +785,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                             member.photoUrl.startsWith('http')
                         ? ClipRRect(
                             borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12),
+                              top: Radius.circular(20),
                             ),
                             child: Image.network(
                               member.photoUrl,
@@ -891,7 +894,10 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.blue.shade400, Colors.blue.shade700],
+          colors: [
+            const Color(0xFF122C4F).withOpacity(0.8),
+            const Color(0xFF122C4F),
+          ],
         ),
       ),
       child: Center(
@@ -1170,7 +1176,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
       ),
     );
   }
-  Widget _buildFamilyStats(LanguageService lang, bool isDark) {
+  Widget _buildFirmStats(LanguageService lang, bool isDark) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -1186,14 +1192,14 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
         ],
       ),
       child: InkWell(
-        onTap: () => _switchTab(1), // Switch to Connect tab
+        onTap: () => Navigator.pushNamed(context, '/admin/firms'),
         borderRadius: BorderRadius.circular(12),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildSmallStat(lang.translate('families'), '${_stats['totalFamilies'] ?? 0}', Colors.purple),
+            _buildSmallStat(lang.translate('firms'), '${_stats['totalFirms'] ?? 0}', Colors.orange),
             _buildSmallStat(lang.translate('members'), '${_stats['total'] ?? 0}', Colors.blue),
-            _buildSmallStat(lang.translate('groups'), '${_stats['totalGroups'] ?? 0}', Colors.green),
+            _buildSmallStat(lang.translate('families'), '${_stats['totalFamilies'] ?? 0}', Colors.purple),
           ],
         ),
       ),

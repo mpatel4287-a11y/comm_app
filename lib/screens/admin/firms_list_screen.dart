@@ -19,23 +19,32 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
   final MemberService _memberService = MemberService();
   String _searchQuery = '';
 
-  // Extract unique firms from members
+  // Extract unique firms from members with normalization to prevent duplicates
   Map<String, List<MemberModel>> _getFirmsMap(List<MemberModel> members) {
     final Map<String, List<MemberModel>> firmsMap = {};
+    final Map<String, String> normalizedToOriginal = {};
     
     for (final member in members) {
       for (final firm in member.firms) {
-        final firmName = firm['name'] ?? '';
-        if (firmName.isNotEmpty) {
-          if (!firmsMap.containsKey(firmName)) {
-            firmsMap[firmName] = [];
+        final originalName = (firm['name'] ?? '').toString().trim();
+        if (originalName.isNotEmpty) {
+          final normalizedName = originalName.toLowerCase();
+          if (!firmsMap.containsKey(normalizedName)) {
+            firmsMap[normalizedName] = [];
+            normalizedToOriginal[normalizedName] = originalName;
           }
-          firmsMap[firmName]!.add(member);
+          firmsMap[normalizedName]!.add(member);
         }
       }
     }
     
-    return firmsMap;
+    // Create a new map with original names as keys but unique based on normalization
+    final Map<String, List<MemberModel>> uniqueFirmsMap = {};
+    firmsMap.forEach((normalized, memberList) {
+      uniqueFirmsMap[normalizedToOriginal[normalized]!] = memberList;
+    });
+    
+    return uniqueFirmsMap;
   }
 
   @override

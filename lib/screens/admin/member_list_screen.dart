@@ -46,8 +46,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   final _birthDateCtrl = TextEditingController();
   final _educationCtrl = TextEditingController(); // Added
   final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController(); // Added
   final _addressCtrl = TextEditingController();
   final _googleMapLinkCtrl = TextEditingController();
+  final _surdhanCtrl = TextEditingController(); // Added
   final _whatsappCtrl = TextEditingController();
   final _instagramCtrl = TextEditingController();
   final _facebookCtrl = TextEditingController();
@@ -70,6 +72,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   bool _hasFamilyHead = false;
   List<String> _tags = [];
   List<Map<String, String>> _firms = [];
+  List<String> _allFirmNames = [];
   bool _loading = false;
 
   @override
@@ -79,6 +82,14 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       _parentMidCtrl.text = widget.initialParentMid!;
     }
     _checkExistingHead();
+    _loadFirmNames();
+  }
+
+  Future<void> _loadFirmNames() async {
+    final names = await MemberService().getAllFirmNames();
+    if (mounted) {
+      setState(() => _allFirmNames = names);
+    }
   }
 
   Future<void> _checkExistingHead() async {
@@ -230,8 +241,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         marriageStatus: _marriageStatus,
         nativeHome: _nativeHomeCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
+        email: _emailCtrl.text.trim(), // Added
         address: _addressCtrl.text.trim(),
         googleMapLink: _googleMapLinkCtrl.text.trim(),
+        surdhan: _surdhanCtrl.text.trim(), // Added
         firms: _firms,
         whatsapp: _whatsappCtrl.text.trim(),
         instagram: _instagramCtrl.text.trim(),
@@ -421,6 +434,11 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     controller: _nativeHomeCtrl,
                     decoration: const InputDecoration(labelText: 'Native Home'),
                   ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _surdhanCtrl,
+                    decoration: const InputDecoration(labelText: 'Surdhan'),
+                  ),
 
                   // Contact Info
                   const SizedBox(height: 20),
@@ -435,6 +453,12 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     keyboardType: TextInputType.phone,
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _emailCtrl,
+                    decoration: const InputDecoration(labelText: 'E-mail ID'),
+                    keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -489,14 +513,65 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: TextFormField(
-                                  initialValue: firm['name'],
-                                  decoration: InputDecoration(
-                                    labelText: lang.translate('firm_name'),
-                                    border: InputBorder.none,
-                                  ),
-                                  onChanged: (value) {
-                                    _firms[index]['name'] = value;
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    return Autocomplete<String>(
+                                      optionsBuilder: (TextEditingValue textEditingValue) {
+                                        if (textEditingValue.text.isEmpty) {
+                                          return const Iterable<String>.empty();
+                                        }
+                                        return _allFirmNames.where((String option) {
+                                          return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                                        });
+                                      },
+                                      onSelected: (String selection) {
+                                        setState(() {
+                                          _firms[index]['name'] = selection;
+                                        });
+                                      },
+                                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                                        if (controller.text != firm['name']) {
+                                          controller.text = firm['name'] ?? '';
+                                        }
+                                        return TextFormField(
+                                          controller: controller,
+                                          focusNode: focusNode,
+                                          decoration: InputDecoration(
+                                            labelText: lang.translate('firm_name'),
+                                            border: InputBorder.none,
+                                          ),
+                                          onChanged: (value) {
+                                            _firms[index]['name'] = value;
+                                          },
+                                          onFieldSubmitted: (value) => onFieldSubmitted(),
+                                        );
+                                      },
+                                      optionsViewBuilder: (context, onSelected, options) {
+                                        return Align(
+                                          alignment: Alignment.topLeft,
+                                          child: Material(
+                                            elevation: 4.0,
+                                            child: Container(
+                                              width: constraints.maxWidth,
+                                              constraints: const BoxConstraints(maxHeight: 200),
+                                              color: Colors.white,
+                                              child: ListView.builder(
+                                                padding: EdgeInsets.zero,
+                                                shrinkWrap: true,
+                                                itemCount: options.length,
+                                                itemBuilder: (BuildContext context, int index) {
+                                                  final String option = options.elementAt(index);
+                                                  return ListTile(
+                                                    title: Text(option),
+                                                    onTap: () => onSelected(option),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
                                   },
                                 ),
                               ),
@@ -752,8 +827,10 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   final _educationCtrl = TextEditingController(); // Added
   final _passwordCtrl = TextEditingController(); // Added
   final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController(); // Added
   final _addressCtrl = TextEditingController();
   final _googleMapLinkCtrl = TextEditingController();
+  final _surdhanCtrl = TextEditingController(); // Added
   final _whatsappCtrl = TextEditingController();
   final _instagramCtrl = TextEditingController();
   final _facebookCtrl = TextEditingController();
@@ -775,6 +852,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   bool _hasFamilyHead = false;
   bool _alreadyHead = false; // Is THIS member currently the head?
   List<String> _tags = [];
+  List<String> _allFirmNames = [];
 
   final PhotoService _photoService = PhotoService();
 
@@ -783,6 +861,14 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
     super.initState();
     _loadMemberData();
     _checkExistingHead();
+    _loadFirmNames();
+  }
+
+  Future<void> _loadFirmNames() async {
+    final names = await MemberService().getAllFirmNames();
+    if (mounted) {
+      setState(() => _allFirmNames = names);
+    }
   }
 
   Future<void> _checkExistingHead() async {
@@ -870,8 +956,10 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
       _birthDateCtrl.text = member.birthDate;
       _educationCtrl.text = member.education; // Added
       _phoneCtrl.text = member.phone;
+      _emailCtrl.text = member.email; // Added
       _addressCtrl.text = member.address;
       _googleMapLinkCtrl.text = member.googleMapLink;
+      _surdhanCtrl.text = member.surdhan; // Added
       _whatsappCtrl.text = member.whatsapp;
       _instagramCtrl.text = member.instagram;
       _facebookCtrl.text = member.facebook;
@@ -1072,6 +1160,11 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                 controller: _nativeHomeCtrl,
                 decoration: const InputDecoration(labelText: 'Native Home'),
               ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _surdhanCtrl,
+                decoration: const InputDecoration(labelText: 'Surdhan'),
+              ),
 
               // Contact Information
               const SizedBox(height: 20),
@@ -1084,6 +1177,12 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                 controller: _phoneCtrl,
                 decoration: const InputDecoration(labelText: 'Phone'),
                 keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(labelText: 'E-mail ID'),
+                keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -1205,14 +1304,65 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: TextFormField(
-                              initialValue: firm['name'],
-                              decoration: const InputDecoration(
-                                labelText: 'Firm Name',
-                                border: InputBorder.none,
-                              ),
-                              onChanged: (value) {
-                                _firms[index]['name'] = value;
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                return Autocomplete<String>(
+                                  optionsBuilder: (TextEditingValue textEditingValue) {
+                                    if (textEditingValue.text.isEmpty) {
+                                      return const Iterable<String>.empty();
+                                    }
+                                    return _allFirmNames.where((String option) {
+                                      return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                                    });
+                                  },
+                                  onSelected: (String selection) {
+                                    setState(() {
+                                      _firms[index]['name'] = selection;
+                                    });
+                                  },
+                                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                                    if (controller.text != firm['name']) {
+                                      controller.text = firm['name'] ?? '';
+                                    }
+                                    return TextFormField(
+                                      controller: controller,
+                                      focusNode: focusNode,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Firm Name',
+                                        border: InputBorder.none,
+                                      ),
+                                      onChanged: (value) {
+                                        _firms[index]['name'] = value;
+                                      },
+                                      onFieldSubmitted: (value) => onFieldSubmitted(),
+                                    );
+                                  },
+                                  optionsViewBuilder: (context, onSelected, options) {
+                                    return Align(
+                                      alignment: Alignment.topLeft,
+                                      child: Material(
+                                        elevation: 4.0,
+                                        child: Container(
+                                          width: constraints.maxWidth,
+                                          constraints: const BoxConstraints(maxHeight: 200),
+                                          color: Colors.white,
+                                          child: ListView.builder(
+                                            padding: EdgeInsets.zero,
+                                            shrinkWrap: true,
+                                            itemCount: options.length,
+                                            itemBuilder: (BuildContext context, int index) {
+                                              final String option = options.elementAt(index);
+                                              return ListTile(
+                                                title: Text(option),
+                                                onTap: () => onSelected(option),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
                               },
                             ),
                           ),
@@ -1472,8 +1622,10 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                         'nativeHome': _nativeHomeCtrl.text.trim(),
                         'mid': _memberMid, // Ensure MID is saved
                         'phone': _phoneCtrl.text.trim(),
+                        'email': _emailCtrl.text.trim(), // Added
                         'address': _addressCtrl.text.trim(),
                         'googleMapLink': _googleMapLinkCtrl.text.trim(),
+                        'surdhan': _surdhanCtrl.text.trim(), // Added
                         'whatsapp': _whatsappCtrl.text.trim(),
                         'instagram': _instagramCtrl.text.trim(),
                         'facebook': _facebookCtrl.text.trim(),
@@ -2086,6 +2238,44 @@ class _MemberListScreenState extends State<MemberListScreen>
                                                     '',
                                                 memberId: doc.id,
                                               );
+                                            },
+                                          ),
+                                        ),
+                                        Flexible(
+                                          child: _buildCompactAction(
+                                            icon: data['role'] == 'manager'
+                                                ? Icons.admin_panel_settings
+                                                : Icons.admin_panel_settings_outlined,
+                                            color: data['role'] == 'manager'
+                                                ? Colors.purple
+                                                : Colors.grey,
+                                            onTap: () async {
+                                              final isCurrentlyManager = data['role'] == 'manager';
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (_) => AlertDialog(
+                                                  title: Text(isCurrentlyManager ? 'Demote Manager' : 'Promote to Manager'),
+                                                  content: Text('Are you sure you want to ${isCurrentlyManager ? 'demote' : 'promote'} this member to ${isCurrentlyManager ? 'member' : 'manager'}?'),
+                                                  actions: [
+                                                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                                    ElevatedButton(
+                                                      onPressed: () => Navigator.pop(context, true),
+                                                      child: const Text('Confirm'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (confirm == true) {
+                                                String famId = widget.familyDocId ?? data['familyDocId'] ?? '';
+                                                String subFamId = widget.subFamilyDocId ?? data['subFamilyDocId'] ?? '';
+                                                
+                                                await MemberService().updateMemberRole(
+                                                  mainFamilyDocId: famId,
+                                                  subFamilyDocId: subFamId,
+                                                  memberId: doc.id,
+                                                  newRole: isCurrentlyManager ? 'member' : 'manager',
+                                                );
+                                              }
                                             },
                                           ),
                                         ),

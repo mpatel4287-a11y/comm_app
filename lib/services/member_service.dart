@@ -39,8 +39,10 @@ class MemberService {
     required String marriageStatus,
     required String nativeHome,
     required String phone,
+    required String email, // Added
     required String address,
     required String googleMapLink,
+    required String surdhan, // Added
     required List<Map<String, String>> firms,
     required String whatsapp,
     required String instagram,
@@ -102,8 +104,10 @@ class MemberService {
       marriageStatus: marriageStatus,
       nativeHome: nativeHome.trim(),
       phone: phone.trim(),
+      email: email.trim(), // Added
       address: address.trim(),
       googleMapLink: googleMapLink.trim(),
+      surdhan: surdhan.trim(), // Added
       firms: cleanedFirms,
       whatsapp: whatsapp.trim(),
       instagram: instagram.trim(),
@@ -339,6 +343,7 @@ class MemberService {
         .toList();
   }
 
+
   // ---------------- GET MARRIED COUNT (ALL FAMILIES) ----------------
   Future<int> getMarriedCount() async {
     final snapshot = await _firestore
@@ -401,5 +406,21 @@ class MemberService {
         .limit(1)
         .get();
     return snapshot.docs.isNotEmpty;
+  }
+
+  // ---------------- GET ALL UNIQUE FIRM NAMES (ALL FAMILIES) ----------------
+  Future<List<String>> getAllFirmNames() async {
+    final snapshot = await _firestore.collectionGroup('members').get();
+    final allFirms = <String>{};
+    for (final doc in snapshot.docs) {
+      final firms = List<dynamic>.from(doc.data()['firms'] ?? []);
+      for (final firm in firms) {
+        final name = (firm['name'] as String? ?? '').trim();
+        if (name.isNotEmpty) {
+          allFirms.add(name);
+        }
+      }
+    }
+    return allFirms.toList()..sort();
   }
 }

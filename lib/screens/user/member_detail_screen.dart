@@ -558,6 +558,8 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                 _buildDetailRow(lang.translate('gotra'), member.gotra),
               if (member.nativeHome.isNotEmpty)
                 _buildDetailRow(lang.translate('native_home'), member.nativeHome),
+              if (member.surdhan.isNotEmpty)
+                _buildDetailRow('Surdhan', member.surdhan),
             ]),
 
             const SizedBox(height: 16),
@@ -577,6 +579,8 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
             _buildSectionHeader(lang.translate('contact_info')),
             _buildDetailCard([
               _buildDetailRow(lang.translate('phone'), member.phone),
+              if (member.email.isNotEmpty)
+                _buildDetailRow('E-mail ID', member.email),
               _buildLocationRow(
                 lang.translate('address'),
                 member.address,

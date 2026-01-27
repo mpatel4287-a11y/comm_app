@@ -31,8 +31,10 @@ class MemberModel {
 
   // Contact
   final String phone;
+  final String email; // Added
   final String address;
   final String googleMapLink;
+  final String surdhan; // Added
 
   // Firms (Multiple)
   final List<Map<String, String>> firms; // [{name, phone, mapLink}]
@@ -77,8 +79,10 @@ class MemberModel {
     required this.marriageStatus,
     required this.nativeHome,
     required this.phone,
+    required this.email, // Added
     required this.address,
     required this.googleMapLink,
+    required this.surdhan, // Added
     required this.firms,
     required this.whatsapp,
     required this.instagram,
@@ -175,8 +179,10 @@ class MemberModel {
       'marriageStatus': marriageStatus,
       'nativeHome': nativeHome,
       'phone': phone,
+      'email': email, // Added
       'address': address,
       'googleMapLink': googleMapLink,
+      'surdhan': surdhan, // Added
       'whatsapp': whatsapp,
       'instagram': instagram,
       'facebook': facebook,
@@ -220,8 +226,10 @@ class MemberModel {
       marriageStatus: data['marriageStatus'] ?? 'unmarried',
       nativeHome: data['nativeHome'] ?? '',
       phone: data['phone'] ?? '',
+      email: data['email'] ?? '', // Added
       address: data['address'] ?? '',
       googleMapLink: data['googleMapLink'] ?? '',
+      surdhan: data['surdhan'] ?? '', // Added
       firms: (data['firms'] as List<dynamic>? ?? [])
           .map((e) => Map<String, String>.from(e))
           .toList(),
@@ -262,8 +270,10 @@ class MemberModel {
     String? marriageStatus,
     String? nativeHome,
     String? phone,
+    String? email, // Added
     String? address,
     String? googleMapLink,
+    String? surdhan, // Added
     List<Map<String, String>>? firms,
     String? whatsapp,
     String? instagram,
@@ -299,8 +309,10 @@ class MemberModel {
       marriageStatus: marriageStatus ?? this.marriageStatus,
       nativeHome: nativeHome ?? this.nativeHome,
       phone: phone ?? this.phone,
+      email: email ?? this.email, // Added
       address: address ?? this.address,
       googleMapLink: googleMapLink ?? this.googleMapLink,
+      surdhan: surdhan ?? this.surdhan, // Added
       firms: firms ?? this.firms,
       whatsapp: whatsapp ?? this.whatsapp,
       instagram: instagram ?? this.instagram,

@@ -89,21 +89,33 @@ class ThemeService extends ChangeNotifier {
     useMaterial3: true,
     brightness: Brightness.light,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.blue.shade900,
+      seedColor: const Color(0xFF122C4F),
+      primary: const Color(0xFF122C4F),
+      secondary: const Color(0xFF5B88B2),
+      tertiary: const Color(0xFFFBF9E4),
+      surface: Colors.white, 
       brightness: Brightness.light,
-    ).copyWith(
-      primary: Colors.blue.shade900,
     ),
-    appBarTheme: AppBarTheme(
-      backgroundColor: Colors.blue.shade900,
-      foregroundColor: Colors.white,
+    scaffoldBackgroundColor: Colors.white,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF122C4F),
+      foregroundColor: Color(0xFFFBF9E4),
       elevation: 0,
+      centerTitle: true,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFF122C4F),
+        foregroundColor: const Color(0xFFFBF9E4),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+    ),
+    cardTheme: CardThemeData(
+      color: Colors.white,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
     ),
   );
 
@@ -111,11 +123,23 @@ class ThemeService extends ChangeNotifier {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.blue.shade900,
+      seedColor: const Color(0xFF122C4F),
+      primary: const Color(0xFF5B88B2),
+      secondary: const Color(0xFF122C4F),
+      tertiary: const Color(0xFFFBF9E4),
+      surface: const Color(0xFF121212),
       brightness: Brightness.dark,
     ),
     appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF000000), // Noir
+      foregroundColor: Colors.white,
       elevation: 0,
+      centerTitle: true,
+    ),
+    cardTheme: CardThemeData(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
     ),
   );
 }

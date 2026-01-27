@@ -107,11 +107,11 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
       width: MediaQuery.of(context).size.width * 0.92,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF122C4F), // Forced dark background (Midnight)
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withOpacity(0.5),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -123,10 +123,10 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 colors: [
-                  theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(alpha: 0.8),
+                  Color(0xFF0D1E36),
+                  Color(0xFF122C4F),
                 ],
               ),
               borderRadius: const BorderRadius.only(
@@ -176,10 +176,10 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: theme.colorScheme.primary, width: 4),
+                    border: Border.all(color: const Color(0xFF5B88B2), width: 4),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                        color: const Color(0xFF5B88B2).withOpacity(0.3),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -192,7 +192,7 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                         : null,
                   ),
                   child: widget.member.photoUrl.isEmpty
-                      ? Icon(Icons.person, size: 60, color: theme.colorScheme.primary)
+                      ? const Icon(Icons.person, size: 60, color: Color(0xFF5B88B2))
                       : null,
                 ),
                 
@@ -204,7 +204,7 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Color(0xFFFBF9E4), // Pearl Perfect text
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -212,9 +212,9 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                   Text(
                     widget.member.surname,
 
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
-                      color: Colors.grey.shade600,
+                      color: Color(0xFF5B88B2), // Ocean secondary
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -222,21 +222,36 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    color: const Color(0xFF5B88B2).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     'MID: ${widget.member.mid}',
 
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
-                      color: theme.colorScheme.primary,
+                      color: Color(0xFF5B88B2),
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1,
                     ),
                   ),
                 ),
                 
+                const SizedBox(height: 8),
+                // Watermark moved here
+                Opacity(
+                  opacity: 0.6, // Increased opacity for better visibility
+                  child: Text(
+                    "Ramanagara Patidar Samaj".toUpperCase(),
+                    style: const TextStyle(
+                      color: Color(0xFFFBF9E4), // Pearl Perfect color
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: 20),
                 Divider(color: Colors.grey.shade300),
                 const SizedBox(height: 16),
@@ -254,9 +269,9 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: Colors.white.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: Column(
                     children: [
@@ -273,13 +288,13 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
 
                         version: QrVersions.auto,
                         size: 140.0,
-                        eyeStyle: QrEyeStyle(
+                        eyeStyle: const QrEyeStyle(
                           eyeShape: QrEyeShape.square,
-                          color: theme.colorScheme.primary,
+                          color: Color(0xFFFBF9E4),
                         ),
-                        dataModuleStyle: QrDataModuleStyle(
+                        dataModuleStyle: const QrDataModuleStyle(
                           dataModuleShape: QrDataModuleShape.square,
-                          color: theme.colorScheme.primary,
+                          color: Color(0xFFFBF9E4),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -429,9 +444,9 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,7 +460,7 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                   label,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey.shade600,
+                    color: const Color(0xFFFBF9E4).withOpacity(0.6),
                     fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -459,7 +474,7 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Color(0xFFFBF9E4),
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

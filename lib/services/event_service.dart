@@ -16,6 +16,7 @@ class EventService {
     required String createdBy,
     String location = '',
     String type = 'general',
+    String time = '',
     String familyDocId = '',
     String visibilityType = 'all',
     List<String> visibleToMemberIds = const [],
@@ -29,6 +30,7 @@ class EventService {
       description: description.trim(),
       location: location.trim(),
       date: date,
+      time: time,
       type: type,
       createdBy: createdBy,
       familyDocId: familyDocId,
@@ -90,6 +92,7 @@ class EventService {
     String? description,
     String? location,
     DateTime? date,
+    String? time,
     String? type,
     String? visibilityType,
     List<String>? visibleToMemberIds,
@@ -101,6 +104,7 @@ class EventService {
     if (description != null) updates['description'] = description;
     if (location != null) updates['location'] = location;
     if (date != null) updates['date'] = date;
+    if (time != null) updates['time'] = time;
     if (type != null) updates['type'] = type;
     if (visibilityType != null) updates['visibilityType'] = visibilityType;
     if (visibleToMemberIds != null) updates['visibleToMemberIds'] = visibleToMemberIds;
@@ -127,7 +131,11 @@ class EventService {
   }
 
   // ---------------- STREAM EVENTS (ALL) ----------------
-  Stream<List<EventModel>> streamAllEvents({String? currentMemberId, List<String>? currentGroupIds}) {
+  Stream<List<EventModel>> streamAllEvents({
+    String? currentMemberId, 
+    List<String>? currentGroupIds,
+    String? userRole,
+  }) {
     return _firestore
         .collection('events')
         .orderBy('date', descending: true)
@@ -139,13 +147,21 @@ class EventService {
                 .toList();
             
             // Filter by visibility
+            // 1. Admins and Managers always see everything
+            if (userRole == 'admin' || userRole == 'manager') {
+              return events;
+            }
+
+            // 2. Otherwise, filter strictly
             if (currentMemberId != null || currentGroupIds != null) {
               return events.where((event) {
                 if (event.visibilityType == 'all') return true;
                 if (event.visibilityType == 'selected') {
+                  // Check if member is explicitly selected (using Document ID)
                   if (currentMemberId != null && event.visibleToMemberIds.contains(currentMemberId)) {
                     return true;
                   }
+                  // Check if member belongs to any selected group
                   if (currentGroupIds != null) {
                     return event.visibleToGroupIds.any((gid) => currentGroupIds.contains(gid));
                   }

@@ -11,6 +11,7 @@ class AttendanceModel {
   final List<String> memberIds; // List of member IDs included in this attendance
   final int memberCount; // Total count
   final DateTime markedAt;
+  final bool isCustomCount;
 
   AttendanceModel({
     required this.id,
@@ -23,6 +24,7 @@ class AttendanceModel {
     required this.memberIds,
     required this.memberCount,
     required this.markedAt,
+    this.isCustomCount = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -36,6 +38,7 @@ class AttendanceModel {
       'memberIds': memberIds,
       'memberCount': memberCount,
       'markedAt': markedAt,
+      'isCustomCount': isCustomCount,
     };
   }
 
@@ -51,6 +54,7 @@ class AttendanceModel {
       memberIds: List<String>.from(data['memberIds'] ?? []),
       memberCount: data['memberCount'] ?? 0,
       markedAt: (data['markedAt'] as dynamic)?.toDate() ?? DateTime.now(),
+      isCustomCount: data['isCustomCount'] ?? false,
     );
   }
 }

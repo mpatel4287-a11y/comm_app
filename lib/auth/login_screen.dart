@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await SessionManager.saveCredentials(loginId, _passwordCtrl.text);
 
         // Navigate based on role/admin status
-        if (res.isAdmin || res.role == 'manager') {
+        if (res.isAdmin) {
           Navigator.pushReplacementNamed(context, '/admin');
         } else {
           Navigator.pushReplacementNamed(context, '/home');
@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           setState(() => _loading = false);
           if (res.success) {
-            if (res.isAdmin || res.role == 'manager') {
+            if (res.isAdmin) {
               Navigator.pushReplacementNamed(context, '/admin');
             } else {
               Navigator.pushReplacementNamed(context, '/home');
@@ -171,10 +171,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ScaleAnimation(
                       delay: const Duration(milliseconds: 100),
                       beginScale: 0.5,
-                      child: Icon(
-                        Icons.lock_person_rounded,
-                        size: 80,
-                        color: Theme.of(context).colorScheme.primary,
+                      child: Image.asset(
+                        'assets/ganesh.png',
+                        height: 100,
                       ),
                     ),
                     const SizedBox(height: 24),

@@ -17,17 +17,29 @@ class AttendanceService {
     required String attendanceType, // 'family' | 'subfamily' | 'firm'
     required String entityId, // familyDocId | subFamilyDocId | firmName
     required String entityName,
+    int? customMemberCount,
   }) async {
-    // Get members based on attendance type
+    // 1. Check if this specific member is already accounted for in ANY attendance record for this event
+    final allAttendanceSnap = await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('attendance')
+        .get();
+        
+    for (final doc in allAttendanceSnap.docs) {
+      final memberIds = List<String>.from(doc.data()['memberIds'] ?? []);
+      if (memberIds.contains(markedBy)) {
+        throw Exception('You have already been marked for this event.');
+      }
+    }
+
+    // 2. Get members based on attendance type
     List<MemberModel> members = [];
     
     if (attendanceType == 'family') {
-      // Get all members from the family
       final allMembers = await _memberService.getAllMembers();
       members = allMembers.where((m) => m.familyDocId == entityId).toList();
     } else if (attendanceType == 'subfamily') {
-      // Get members from sub-family
-      // entityId format: "familyDocId/subFamilyDocId"
       final pathParts = entityId.split('/');
       if (pathParts.length >= 2) {
         final familyDocId = pathParts[0];
@@ -36,66 +48,54 @@ class AttendanceService {
         members = allMembers.where((m) => 
           m.familyDocId == familyDocId && m.subFamilyDocId == subFamilyDocId
         ).toList();
-      } else {
-        // Fallback: try to get from member's own subfamily
-        final allMembers = await _memberService.getAllMembers();
-        final currentMember = allMembers.firstWhere(
-          (m) => m.id == markedBy,
-          orElse: () => throw Exception('Member not found'),
-        );
-        members = allMembers.where((m) => 
-          m.familyDocId == currentMember.familyDocId && 
-          m.subFamilyDocId == currentMember.subFamilyDocId
-        ).toList();
       }
     } else if (attendanceType == 'firm') {
-      // Get members who have this firm
       final allMembers = await _memberService.getAllMembers();
       members = allMembers.where((m) => 
         m.firms.any((firm) => firm['name'] == entityId)
       ).toList();
     }
 
-    // Check if attendance already exists for this event and entity
-    final existing = await _firestore
+    // 3. Check if ANY of the members in this group are already accounted for
+    final accountedMemberIds = <String>{};
+    for (final doc in allAttendanceSnap.docs) {
+      accountedMemberIds.addAll(List<String>.from(doc.data()['memberIds'] ?? []));
+    }
+    
+    final alreadyMarkedNames = members
+        .where((m) => accountedMemberIds.contains(m.id))
+        .map((m) => m.fullName)
+        .toList();
+        
+    if (alreadyMarkedNames.isNotEmpty) {
+      throw Exception('The following members are already marked for this event: ${alreadyMarkedNames.join(", ")}');
+    }
+
+    // 4. Validate custom count if provided
+    if (customMemberCount != null && customMemberCount < members.length) {
+      throw Exception('Custom count cannot be less than the total registered members (${members.length})');
+    }
+
+    // 5. Create new attendance
+    final attendance = AttendanceModel(
+      id: '',
+      eventId: eventId,
+      markedBy: markedBy,
+      markedByName: markedByName,
+      attendanceType: attendanceType,
+      entityId: entityId,
+      entityName: entityName,
+      memberIds: members.map((m) => m.id).toList(),
+      memberCount: customMemberCount ?? members.length,
+      markedAt: DateTime.now(),
+      isCustomCount: customMemberCount != null,
+    );
+
+    await _firestore
         .collection('events')
         .doc(eventId)
         .collection('attendance')
-        .where('entityId', isEqualTo: entityId)
-        .where('attendanceType', isEqualTo: attendanceType)
-        .limit(1)
-        .get();
-
-    if (existing.docs.isNotEmpty) {
-      // Update existing attendance
-      await existing.docs.first.reference.update({
-        'markedBy': markedBy,
-        'markedByName': markedByName,
-        'memberIds': members.map((m) => m.id).toList(),
-        'memberCount': members.length,
-        'markedAt': FieldValue.serverTimestamp(),
-      });
-    } else {
-      // Create new attendance
-      final attendance = AttendanceModel(
-        id: '',
-        eventId: eventId,
-        markedBy: markedBy,
-        markedByName: markedByName,
-        attendanceType: attendanceType,
-        entityId: entityId,
-        entityName: entityName,
-        memberIds: members.map((m) => m.id).toList(),
-        memberCount: members.length,
-        markedAt: DateTime.now(),
-      );
-
-      await _firestore
-          .collection('events')
-          .doc(eventId)
-          .collection('attendance')
-          .add(attendance.toMap());
-    }
+        .add(attendance.toMap());
   }
 
   // ---------------- GET ATTENDANCE FOR EVENT ----------------
@@ -148,6 +148,35 @@ class AttendanceService {
     }
     
     return counts;
+  }
+
+  // ---------------- UPDATE ATTENDANCE ----------------
+  Future<void> updateAttendanceCount({
+    required String eventId,
+    required String attendanceId,
+    required int newCount,
+  }) async {
+    final doc = await _firestore
+        .collection('events')
+        .doc(eventId)
+        .collection('attendance')
+        .doc(attendanceId)
+        .get();
+        
+    if (!doc.exists) throw Exception('Attendance record not found');
+    
+    final data = doc.data()!;
+    final memberIds = List<String>.from(data['memberIds'] ?? []);
+    
+    if (newCount < memberIds.length) {
+      throw Exception('Count cannot be less than members in group (${memberIds.length})');
+    }
+    
+    await doc.reference.update({
+      'memberCount': newCount,
+      'isCustomCount': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // ---------------- DELETE ATTENDANCE ----------------

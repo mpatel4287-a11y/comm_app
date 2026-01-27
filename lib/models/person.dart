@@ -11,6 +11,7 @@ class Person {
   final int? age;
   final String? mid;
   final String? relationToHead;
+  final String? spouseId;
 
   Person({
     required this.id,
@@ -25,10 +26,17 @@ class Person {
     this.age,
     this.mid,
     this.relationToHead,
+    this.spouseId,
   });
 
   String get fullName => '$firstName $lastName';
-  String get initials => '${firstName[0]}${lastName[0]}';
+  String get initials {
+    String res = '';
+    if (firstName.isNotEmpty) res += firstName[0].toUpperCase();
+    if (lastName.isNotEmpty) res += lastName[0].toUpperCase();
+    return res.isEmpty ? '?' : res;
+  }
+
   String get birthYearString => 'b. $birthYear';
   int get calculatedAge {
     if (age != null) return age!;

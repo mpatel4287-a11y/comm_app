@@ -119,12 +119,14 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                             birthDate: '',
                             age: 0,
                             education: '', // Added
+                            email: '', // Added
                             bloodGroup: '',
                             marriageStatus: 'unmarried',
                             nativeHome: '',
                             phone: '',
                             address: '',
                             googleMapLink: '',
+                            surdhan: '', // Added
                             firms: [],
                             whatsapp: '',
                             instagram: '',

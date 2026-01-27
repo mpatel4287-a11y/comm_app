@@ -26,7 +26,6 @@ import 'screens/user/user_notification_screen.dart';
 import 'screens/user/user_calendar_screen.dart';
 import 'screens/user/user_search_tab.dart';
 import 'screens/user/qr_scanner_screen.dart';
-import 'screens/family_tree_screen.dart';
 
 import 'services/session_manager.dart';
 import 'services/theme_service.dart';
@@ -104,7 +103,6 @@ class _InitialRouteState extends State<InitialRoute> {
       if (hasSession && isAdmin == true) {
         Navigator.pushReplacementNamed(context, '/admin');
       } else if (hasSession) {
-        // Manager also goes here now
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         Navigator.pushReplacementNamed(context, '/login');
@@ -166,7 +164,6 @@ class MyApp extends StatelessWidget {
         '/user/qr-scanner': (_) => const QRScannerScreen(),
         '/user/member-detail': (_) =>
             const MemberDetailScreen(memberId: '', familyDocId: null),
-        '/family-tree': (_) => const FamilyTreeScreen(),
       },
       onGenerateRoute: (settings) {
         // Custom animated page route
