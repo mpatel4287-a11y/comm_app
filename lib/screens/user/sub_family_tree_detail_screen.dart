@@ -357,14 +357,14 @@ class _SubFamilyTreeDetailScreenState extends State<SubFamilyTreeDetailScreen> {
       appBar: AppBar(
         title: Text(
           widget.subFamilyName,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFF4A90E2),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
         actions: [
           if (!_loading && _generations.isNotEmpty)
             IconButton(
@@ -385,33 +385,15 @@ class _SubFamilyTreeDetailScreenState extends State<SubFamilyTreeDetailScreen> {
       ),
       body: _loading
           ? Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFE3F2FD),
-                    Color(0xFFF3E5F5),
-                    Color(0xFFFCE4EC),
-                  ],
-                  stops: [0.0, 0.5, 1.0],
-                ),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
               ),
               child: const Center(child: CircularProgressIndicator()),
             )
           : _generations.isEmpty
               ? Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFE3F2FD),
-                        Color(0xFFF3E5F5),
-                        Color(0xFFFCE4EC),
-                      ],
-                      stops: [0.0, 0.5, 1.0],
-                    ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
                   ),
                   child: Center(
                     child: Column(
@@ -437,17 +419,8 @@ class _SubFamilyTreeDetailScreenState extends State<SubFamilyTreeDetailScreen> {
               : Screenshot(
                   controller: _screenshotController,
                   child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFFE3F2FD), // Light blue
-                          Color(0xFFF3E5F5), // Light purple
-                          Color(0xFFFCE4EC), // Light pink
-                        ],
-                        stops: [0.0, 0.5, 1.0],
-                      ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
                     ),
                     child: Stack(
                       children: [
@@ -488,7 +461,7 @@ class _SubFamilyTreeDetailScreenState extends State<SubFamilyTreeDetailScreen> {
                                 vertical: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.8),
+                                color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
                                   BoxShadow(
@@ -503,7 +476,7 @@ class _SubFamilyTreeDetailScreenState extends State<SubFamilyTreeDetailScreen> {
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade900,
+                                  color: Theme.of(context).colorScheme.primary,
                                   letterSpacing: 0.5,
                                 ),
                               ),

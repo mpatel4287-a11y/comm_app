@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'member_list_screen.dart';
 import 'role_management_screen.dart';
+import '../user/chits_screen.dart';
 import '../../services/auth_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/theme_service.dart';
@@ -204,6 +205,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 subtitle: lang.translate('view_firms_subtitle'),
                 color: Colors.orange,
                 onTap: () => Navigator.pushNamed(context, '/admin/firms'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SlideInAnimation(
+              delay: const Duration(milliseconds: 520),
+              beginOffset: const Offset(-0.2, 0),
+              child: _buildDashboardCard(
+                context,
+                icon: Icons.monetization_on_outlined,
+                title: lang.translate('chits'),
+                subtitle: 'Manage community chit schemes',
+                color: Colors.amber,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChitsScreen()),
+                ),
               ),
             ),
             const SizedBox(height: 12),

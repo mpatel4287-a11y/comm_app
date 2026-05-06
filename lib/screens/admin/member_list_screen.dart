@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/full_screen_image_viewer.dart';
 
 import '../../models/member_model.dart';
 import '../../services/imagekit_config.dart';
@@ -1904,8 +1905,8 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                           margin: const EdgeInsets.only(top: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            border: Border.all(color: Colors.grey.shade200),
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
@@ -1996,9 +1997,9 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                                       decoration: InputDecoration(
                                         labelText: 'Phone',
                                         filled: true,
-                                        fillColor: Colors.grey.shade50,
+                                        fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.grey.shade50,
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade200)),
                                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
                                         isDense: true,
                                       ),
@@ -2013,9 +2014,9 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                                       decoration: InputDecoration(
                                         labelText: 'Map Link',
                                         filled: true,
-                                        fillColor: Colors.grey.shade50,
+                                        fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.grey.shade50,
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade200)),
                                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
                                         isDense: true,
                                       ),
@@ -2620,32 +2621,16 @@ class _MemberListScreenState extends State<MemberListScreen>
                           );
                         },
                         child: Container(
-                          decoration: BoxDecoration(
-                            gradient: isActive
-                                ? LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                       Colors.teal.shade50,
-                                      Colors.white,
-                                    ],
-                                  )
-                                : LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.grey.shade300,
-                                      Colors.grey.shade200,
-                                    ],
-                                  ),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isActive
-                                  ? Colors.teal.shade200
-                                  : Colors.grey.shade400,
-                              width: 1.5,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isActive
+                                    ? Theme.of(context).colorScheme.primary.withOpacity(0.5)
+                                    : Theme.of(context).colorScheme.outlineVariant,
+                                width: 1.5,
+                              ),
                             ),
-                          ),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                             child: Column(
@@ -2657,8 +2642,8 @@ class _MemberListScreenState extends State<MemberListScreen>
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: isActive
-                                          ? Colors.teal.shade400
-                                          : Colors.grey.shade400,
+                                          ? Theme.of(context).colorScheme.primary
+                                          : Theme.of(context).colorScheme.outline,
                                       width: 3,
                                     ),
                                     boxShadow: [
@@ -2672,26 +2657,37 @@ class _MemberListScreenState extends State<MemberListScreen>
                                       ),
                                     ],
                                   ),
-                                  child: ClipOval(
-                                    child: (() {
-                                      final photoUrl =
-                                          data['photoUrl'] as String? ?? '';
-                                      if (photoUrl.isNotEmpty &&
-                                          photoUrl.startsWith('http')) {
-                                        return CachedNetworkImage(
-                                          imageUrl: photoUrl,
-                                          width: 50,
-                                          height: 50,
-                                          fit: BoxFit.cover,
-                                          errorWidget:
-                                              (context, url, error) {
-                                                return _buildInitials(data);
-                                              },
-                                        );
-                                      } else {
-                                        return _buildInitials(data);
+                                  child: GestureDetector(
+                                    onLongPress: () {
+                                      final photoUrl = data['photoUrl'] as String? ?? '';
+                                      if (photoUrl.isNotEmpty && photoUrl.startsWith('http')) {
+                                        FullScreenImageViewer.show(context, photoUrl, tag: 'member_${doc.id}');
                                       }
-                                    })(),
+                                    },
+                                    child: ClipOval(
+                                      child: (() {
+                                        final photoUrl =
+                                            data['photoUrl'] as String? ?? '';
+                                        if (photoUrl.isNotEmpty &&
+                                            photoUrl.startsWith('http')) {
+                                          return Hero(
+                                            tag: 'member_${doc.id}',
+                                            child: CachedNetworkImage(
+                                              imageUrl: photoUrl,
+                                              width: 50,
+                                              height: 50,
+                                              fit: BoxFit.cover,
+                                              errorWidget:
+                                                  (context, url, error) {
+                                                    return _buildInitials(data);
+                                                  },
+                                            ),
+                                          );
+                                        } else {
+                                          return _buildInitials(data);
+                                        }
+                                      })(),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -2705,8 +2701,8 @@ class _MemberListScreenState extends State<MemberListScreen>
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color: isActive
-                                        ? Colors.black87
-                                        : Colors.grey.shade700,
+                                        ? Theme.of(context).colorScheme.onSurface
+                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                                   ),
                                 ),
                                 
@@ -2719,7 +2715,7 @@ class _MemberListScreenState extends State<MemberListScreen>
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue.shade100,
+                                    color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
                                       color: Colors.blue.shade300,

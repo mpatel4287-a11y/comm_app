@@ -1,6 +1,5 @@
 // lib/screens/user/digital_id_screen.dart
 
-import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'dart:typed_data';
@@ -10,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:gal/gal.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/full_screen_image_viewer.dart';
 
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -173,29 +173,36 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
             child: Column(
               children: [
                 // Profile Photo
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF5B88B2), width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF5B88B2).withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                    image: widget.member.photoUrl.isNotEmpty
-                        ? DecorationImage(
-                            image: CachedNetworkImageProvider(widget.member.photoUrl),
-                            fit: BoxFit.cover,
-                          )
+                GestureDetector(
+                  onLongPress: () {
+                    if (widget.member.photoUrl.isNotEmpty) {
+                      FullScreenImageViewer.show(context, widget.member.photoUrl, tag: 'digital_id_${widget.member.id}');
+                    }
+                  },
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF5B88B2), width: 4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF5B88B2).withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                      image: widget.member.photoUrl.isNotEmpty
+                          ? DecorationImage(
+                              image: CachedNetworkImageProvider(widget.member.photoUrl),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: widget.member.photoUrl.isEmpty
+                        ? const Icon(Icons.person, size: 60, color: Color(0xFF5B88B2))
                         : null,
                   ),
-                  child: widget.member.photoUrl.isEmpty
-                      ? const Icon(Icons.person, size: 60, color: Color(0xFF5B88B2))
-                      : null,
                 ),
                 
                 const SizedBox(height: 16),

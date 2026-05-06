@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/full_screen_image_viewer.dart';
 import '../../services/theme_service.dart';
 import '../../services/language_service.dart';
 import '../../services/session_manager.dart';
@@ -142,10 +143,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   Center(
                     child: Stack(
                       children: [
-                        ProfileImage(
-                          photoUrl: _currentUser?.photoUrl,
-                          fullName: _currentUser?.fullName ?? 'Guest',
-                          radius: 60,
+                        GestureDetector(
+                          onLongPress: () {
+                            if (_currentUser?.photoUrl != null && _currentUser!.photoUrl.isNotEmpty) {
+                              FullScreenImageViewer.show(context, _currentUser!.photoUrl, tag: 'profile_view');
+                            }
+                          },
+                          child: ProfileImage(
+                            photoUrl: _currentUser?.photoUrl,
+                            fullName: _currentUser?.fullName ?? 'Guest',
+                            radius: 60,
+                          ),
                         ),
                         if (_uploadingPhoto)
                           const Positioned(

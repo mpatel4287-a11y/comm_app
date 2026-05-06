@@ -7,6 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../models/member_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/full_screen_image_viewer.dart';
+import 'chits_screen.dart';
 import '../../services/member_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/theme_service.dart';
@@ -258,9 +260,9 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                       ],
                     ),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.dashboard,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     size: 30,
                   ),
                 ),
@@ -271,7 +273,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   lang.translate('loading'),
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -289,7 +291,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
         }
       },
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade50,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: IndexedStack(
           index: _selectedIndex,
           children: [
@@ -314,22 +316,21 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
           onDestinationSelected: (index) {
             setState(() => _selectedIndex = index);
           },
-          indicatorColor: const Color(0xFF122C4F).withOpacity(0.2), // Midnight indicator
           animationDuration: const Duration(milliseconds: 300),
           destinations: [
             NavigationDestination(
               icon: const Icon(Icons.event_note_outlined),
-              selectedIcon: const Icon(Icons.event_note, color: Color(0xFF122C4F)),
+              selectedIcon: Icon(Icons.event_note, color: Theme.of(context).colorScheme.primary),
               label: lang.translate('events'),
             ),
             NavigationDestination(
               icon: const Icon(Icons.connect_without_contact_outlined),
-              selectedIcon: const Icon(Icons.connect_without_contact, color: Color(0xFF122C4F)),
+              selectedIcon: Icon(Icons.connect_without_contact, color: Theme.of(context).colorScheme.primary),
               label: lang.translate('connect'),
             ),
             NavigationDestination(
               icon: const Icon(Icons.dashboard_outlined),
-              selectedIcon: const Icon(Icons.dashboard, color: Color(0xFF122C4F)),
+              selectedIcon: Icon(Icons.dashboard, color: Theme.of(context).colorScheme.primary),
               label: lang.translate('home'),
             ),
             NavigationDestination(
@@ -351,7 +352,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   return Badge(
                     label: Text(unreadCount.toString()),
                     isLabelVisible: unreadCount > 0,
-                    child: const Icon(Icons.notifications_active, color: Color(0xFF122C4F)),
+                    child: Icon(Icons.notifications_active, color: Theme.of(context).colorScheme.primary),
                   );
                 },
               ),
@@ -359,7 +360,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             ),
             NavigationDestination(
               icon: const Icon(Icons.account_circle_outlined),
-              selectedIcon: const Icon(Icons.account_circle, color: Color(0xFF122C4F)),
+              selectedIcon: Icon(Icons.account_circle, color: Theme.of(context).colorScheme.primary),
               label: lang.translate('profile'),
             ),
           ],
@@ -372,7 +373,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     return RefreshIndicator(
       onRefresh: _loadDashboardData,
       color: Colors.blue.shade900,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       strokeWidth: 3,
       child: CustomScrollView(
         controller: _scrollController,
@@ -382,7 +383,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             expandedHeight: 60.0,
             floating: false,
             pinned: true,
-            backgroundColor: const Color(0xFF122C4F),
+            backgroundColor: Theme.of(context).colorScheme.primary,
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsets.only(left: 16, bottom: 12),
               title: Text(
@@ -390,11 +391,11 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBF9E4)),
               ),
               background: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF122C4F), Color(0xFF0D1E36)],
+                    colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withOpacity(0.8)],
                   ),
                 ),
               ),
@@ -406,7 +407,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   onTap: () => setState(() => _selectedIndex = 4),
                   child: CircleAvatar(
                     radius: 18,
-                    backgroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     backgroundImage: _currentUser?.photoUrl.isNotEmpty == true
                         ? CachedNetworkImageProvider(_currentUser!.photoUrl)
                         : null,
@@ -481,6 +482,88 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   beginOffset: const Offset(0.1, 0),
                   child: _buildFirmStats(lang, isDark),
                 ),
+
+                // Section: Community Services (Chits for Men only, but all Admins/Managers)
+                if (_currentUser?.gender.toLowerCase() == 'male' || _userRole == 'admin' || _userRole == 'manager') ...[
+                  const SizedBox(height: 16),
+                  SlideInAnimation(
+                    delay: const Duration(milliseconds: 320),
+                    beginOffset: const Offset(0.1, 0),
+                    child: _buildSectionHeader(
+                      lang.translate('community_services'),
+                      'Exclusive community schemes',
+                      Icons.monetization_on_outlined,
+                      null,
+                      lang,
+                      isDark,
+                    ),
+                  ),
+                  FadeInAnimation(
+                    delay: const Duration(milliseconds: 340),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ChitsScreen()));
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.amber.withOpacity(0.3),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.monetization_on_outlined, color: Colors.amber),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      lang.translate('chits'),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Explore and join community schemes',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
 
                 // Section: Community Activity (Events) with animation
                 SlideInAnimation(
@@ -615,7 +698,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   ) {
     return AnimatedCard(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       borderRadius: 20,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -639,7 +722,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -647,7 +730,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -679,10 +762,10 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF5B88B2).withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: const Color(0xFF5B88B2), size: 20),
+                child: Icon(icon, color: Theme.of(context).colorScheme.secondary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -694,12 +777,12 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Text(
                       subtitle,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -755,7 +838,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   ) {
     return AnimatedCard(
       margin: const EdgeInsets.only(right: 12),
-      backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       borderRadius: 20,
       onTap: () => _navigateToMember(member),
       child: Container(
@@ -774,8 +857,8 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFF122C4F).withOpacity(0.8),
-                    const Color(0xFF122C4F),
+                    Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                    Theme.of(context).colorScheme.primary,
                   ],
                 ),
               ),
@@ -790,13 +873,25 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(20),
                             ),
-                            child: CachedNetworkImage(
-                              imageUrl: member.photoUrl,
-                              width: double.infinity,
-                              height: 120,
-                              fit: BoxFit.cover,
-                              errorWidget: (_, __, ___) =>
-                                  _buildAvatarPlaceholder(member),
+                            child: GestureDetector(
+                              onLongPress: () {
+                                if (member.photoUrl.isNotEmpty) {
+                                  FullScreenImageViewer.show(context, member.photoUrl, tag: 'dash_photo_${member.id}');
+                                }
+                              },
+                              child: member.photoUrl.isNotEmpty
+                                  ? Hero(
+                                      tag: 'dash_photo_${member.id}',
+                                      child: CachedNetworkImage(
+                                        imageUrl: member.photoUrl,
+                                        width: double.infinity,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) =>
+                                            _buildAvatarPlaceholder(member),
+                                      ),
+                                    )
+                                  : _buildAvatarPlaceholder(member),
                             ),
                           )
                         : _buildAvatarPlaceholder(member),
@@ -811,9 +906,9 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                           color: Colors.orange,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.auto_awesome,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           size: 12,
                         ),
                       ),
@@ -832,7 +927,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -844,14 +939,14 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                         Icon(
                           Icons.bloodtype,
                           size: 12,
-                          color: Colors.grey.shade600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           member.bloodGroup,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey.shade600,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -863,7 +958,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                         Icon(
                           Icons.location_on,
                           size: 12,
-                          color: Colors.grey.shade600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -871,7 +966,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                             member.nativeHome,
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey.shade600,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -906,8 +1001,8 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
       child: Center(
         child: Text(
           member.fullName.isNotEmpty ? member.fullName[0].toUpperCase() : '?',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.surface,
             fontSize: 48,
             fontWeight: FontWeight.bold,
           ),
@@ -931,7 +1026,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade800 : Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Center(child: CircularProgressIndicator()),
@@ -945,7 +1040,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade800 : Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -963,7 +1058,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   lang.translate('no_events'),
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -990,7 +1085,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               child: AnimatedCard(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
-                backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 borderRadius: 12,
                 border: Border.all(
                   color: Colors.blue.withOpacity(0.3),
@@ -1036,7 +1131,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -1044,7 +1139,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                           '${date.hour}:${date.minute.toString().padLeft(2, '0')}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -1088,7 +1183,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 12),
@@ -1153,7 +1248,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
   }) {
     return AnimatedCard(
       padding: const EdgeInsets.all(16),
-      backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       borderRadius: 12,
       border: Border.all(color: color.withOpacity(0.3)),
       onTap: onTap,
@@ -1178,7 +1273,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -1194,7 +1289,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade800 : Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -1234,7 +1329,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey.shade600,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ],

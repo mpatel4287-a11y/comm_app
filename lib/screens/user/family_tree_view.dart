@@ -163,16 +163,16 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
       appBar: AppBar(
         title: Text(
           '${widget.familyName} - Family Trees',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFF4A90E2),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
       ),
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(
@@ -218,17 +218,11 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
                           onTap: () => _navigateToSubFamilyTree(subFamily),
                           borderRadius: BorderRadius.circular(16),
                           child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.blue.shade50,
-                                  Colors.purple.shade50,
-                                ],
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                               ),
-                            ),
                             padding: const EdgeInsets.all(20),
                             child: Row(
                               children: [
@@ -236,12 +230,12 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
                                   width: 60,
                                   height: 60,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF4A90E2),
+                                    color: Theme.of(context).colorScheme.primaryContainer,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.account_tree,
-                                    color: Colors.white,
+                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
                                     size: 32,
                                   ),
                                 ),
@@ -252,10 +246,10 @@ class _FamilyTreeViewState extends State<FamilyTreeView> {
                                     children: [
                                       Text(
                                         subFamilyName,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFF2C3E50),
+                                          color: Theme.of(context).colorScheme.onSurface,
                                         ),
                                       ),
                                       const SizedBox(height: 4),

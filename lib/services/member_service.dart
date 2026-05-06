@@ -1,6 +1,7 @@
 // lib/services/member_service.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 import '../models/member_model.dart';
 import 'subfamily_service.dart'; // Added import
@@ -361,7 +362,7 @@ class MemberService {
         all.addAll(memSnap.docs.map((d) => MemberModel.fromMap(d.id, d.data())));
       }
     } catch (e) {
-      print('Error in getFamilyMembers: $e');
+      debugPrint('Error in getFamilyMembers: $e');
       // Fallback to collection group if available, or just return empty
       try {
         final snapshot = await _firestore

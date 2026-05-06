@@ -8,6 +8,8 @@ import '../../services/member_service.dart';
 import '../../models/organizational_role_model.dart';
 import '../../models/member_model.dart';
 import 'member_detail_screen.dart';
+import '../admin/role_management_screen.dart';
+import '../../services/session_manager.dart';
 import '../../widgets/animation_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -23,6 +25,7 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
   final MemberService _memberService = MemberService();
   late TabController _tabController;
   List<MemberModel> _allMembers = [];
+  bool _isAdminOrManager = false;
   bool _loading = true;
 
   @override
@@ -41,9 +44,14 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
           return []; // Return empty list on timeout
         },
       );
+      
+      final role = await SessionManager.getRole();
+      final isAdmin = await SessionManager.getIsAdmin() ?? false;
+
       if (mounted) {
         setState(() {
           _allMembers = members;
+          _isAdminOrManager = isAdmin || role == 'manager' || role == 'admin';
           _loading = false;
         });
       }
@@ -66,17 +74,28 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(Provider.of<LanguageService>(context).translate('committees_roles'), style: const TextStyle(fontWeight: FontWeight.w800)),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E293B),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 0,
+        actions: [
+          if (_isAdminOrManager)
+            IconButton(
+              icon: const Icon(Icons.edit_note),
+              tooltip: 'Manage Roles',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RoleManagementScreen()),
+              ),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.teal,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.teal,
+          labelColor: Theme.of(context).colorScheme.primary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+          indicatorColor: Theme.of(context).colorScheme.primary,
           isScrollable: true,
           tabs: RoleService.defaultCategories.map((c) {
             // Translate category name for tabs
@@ -168,13 +187,12 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  // Show the raw role title — don't try to look it up by key
-                  role.roleTitle.toUpperCase(),
-                  style: const TextStyle(
+                  lang.translate(role.roleTitle.toLowerCase().replaceAll(' ', '_')).toUpperCase(),
+                  style: TextStyle(
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.2,
                     fontSize: 14,
-                    color: Color(0xFF475569),
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -220,9 +238,9 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.02),
@@ -241,7 +259,7 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.teal.shade50,
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   image: member.photoUrl.isNotEmpty
                       ? DecorationImage(
                           image: CachedNetworkImageProvider(member.photoUrl),
@@ -253,7 +271,10 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
                     ? Center(
                         child: Text(
                           member.fullName[0].toUpperCase(),
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.teal),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       )
                     : null,
@@ -273,7 +294,7 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
                   ),
                   Text(
                     member.mid,
-                    style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),

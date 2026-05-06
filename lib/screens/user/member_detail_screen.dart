@@ -14,6 +14,7 @@ import '../../../services/language_service.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../admin/member_list_screen.dart';
+import '../../widgets/full_screen_image_viewer.dart';
 
 // Helper widget to handle profile images with error handling
 class ProfileImage extends StatefulWidget {
@@ -373,40 +374,9 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
     }
   }
 
-  void _showFullScreenImage(String? photoUrl, String fullName) {
+  void _showFullScreenImage(String? photoUrl, String fullName, String id) {
     if (photoUrl == null || photoUrl.isEmpty || !photoUrl.startsWith('http')) return;
-
-    showDialog(
-      context: context,
-      barrierColor: Colors.black,
-      builder: (context) => Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.white, size: 30),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: Center(
-          child: InteractiveViewer(
-            panEnabled: true,
-            minScale: 0.5,
-            maxScale: 4.0,
-            child: Hero(
-              tag: 'full_profile_$photoUrl',
-              child: CachedNetworkImage(
-                imageUrl: photoUrl,
-                fit: BoxFit.contain,
-                placeholder: (context, url) => const _LoadingSpinner(),
-                errorWidget: (context, url, error) => const Icon(Icons.error),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    FullScreenImageViewer.show(context, photoUrl, tag: 'profile_$id');
   }
 
   @override
@@ -669,7 +639,7 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
                   photoUrl: member.photoUrl,
                   fullName: member.fullName,
                   radius: 60,
-                  onLongPress: () => _showFullScreenImage(member.photoUrl, member.fullName),
+                  onLongPress: () => _showFullScreenImage(member.photoUrl, member.fullName, member.id),
                 ),
               ),
               if (member.role == 'manager')

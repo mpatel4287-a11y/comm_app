@@ -1,6 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 
 class FcmService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
@@ -93,5 +93,18 @@ class FcmService {
 
   static Future<void> unsubscribeFromTopic(String topic) async {
     await _messaging.unsubscribeFromTopic(topic);
+  }
+
+  // --- SEND DIRECT NOTIFICATION (MOCK) ---
+  static Future<void> sendNotification({
+    required String token,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    // In a real production app, this would call a Cloud Function or your own backend.
+    // For this prototype, we'll log it. 
+    // To actually send from the app, you'd need the FCM HTTP v1 API logic here.
+    debugPrint('FCM MOCK SEND: To=$token, Title=$title, Body=$body');
   }
 }

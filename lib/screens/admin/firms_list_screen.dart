@@ -293,36 +293,40 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
                                               ),
                                             ),
                                             const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.apartment,
-                                                  size: 14,
-                                                  color: Colors.grey.shade600,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  '$subFirmsCount Sub-firms',
-                                                  style: TextStyle(
-                                                    fontSize: 13,
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              alignment: Alignment.centerLeft,
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.apartment,
+                                                    size: 14,
                                                     color: Colors.grey.shade600,
                                                   ),
-                                                ),
-                                                const SizedBox(width: 12),
-                                                Icon(
-                                                  Icons.groups_2,
-                                                  size: 16,
-                                                  color: Colors.grey.shade600,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  '$memberCount Members',
-                                                  style: TextStyle(
-                                                    fontSize: 13,
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    '$subFirmsCount Sub-firms',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.grey.shade600,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Icon(
+                                                    Icons.groups_2,
+                                                    size: 16,
                                                     color: Colors.grey.shade600,
                                                   ),
-                                                ),
-                                              ],
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    '$memberCount Members',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.grey.shade600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ],
                                         ),

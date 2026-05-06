@@ -206,7 +206,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
     final isDark = theme.isDarkMode;
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text(lang.translate('calendar')),
         backgroundColor: Colors.blue.shade900,
@@ -285,7 +285,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade800 : Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -369,7 +369,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade800 : Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -463,7 +463,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade800 : Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -489,7 +489,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const Spacer(),
@@ -583,7 +583,7 @@ class _UserCalendarScreenState extends State<UserCalendarScreen>
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: isDark ? Colors.white : Colors.black87,
+                              color: Theme.of(context).colorScheme.onSurface,
                               decoration: isPast
                                   ? TextDecoration.lineThrough
                                   : null,

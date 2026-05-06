@@ -57,6 +57,8 @@ class _FamilyTreeState extends State<FamilyTree> {
               generations: widget.generations,
               cardPositions: _cardPositions,
               generationSpacing: widget.generationSpacing,
+              lineColor: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+              marriageColor: Theme.of(context).colorScheme.onSurface,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -241,11 +243,15 @@ class _FamilyTreePainter extends CustomPainter {
   final List<List<Person>> generations;
   final Map<String, Rect> cardPositions;
   final double generationSpacing;
-
+  final Color lineColor;
+  final Color marriageColor;
+  
   _FamilyTreePainter({
     required this.generations,
     required this.cardPositions,
     required this.generationSpacing,
+    required this.lineColor,
+    required this.marriageColor,
   });
 
   @override
@@ -253,7 +259,7 @@ class _FamilyTreePainter extends CustomPainter {
     if (cardPositions.isEmpty) return;
 
     final paint = Paint()
-      ..color = const Color(0xFF4A90E2).withOpacity(0.8)
+      ..color = lineColor
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -279,7 +285,7 @@ class _FamilyTreePainter extends CustomPainter {
           
           // Draw marriage line (black and bold as per user request)
           final marriagePaint = Paint()
-            ..color = Colors.black87
+            ..color = marriageColor
             ..strokeWidth = 3.0
             ..style = PaintingStyle.stroke
             ..strokeCap = StrokeCap.round;

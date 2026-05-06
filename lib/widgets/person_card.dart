@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/person.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'full_screen_image_viewer.dart';
 
 class PersonCard extends StatefulWidget {
   final Person person;
@@ -91,7 +92,7 @@ class _PersonCardState extends State<PersonCard>
                 ),
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: _borderColor,
@@ -136,36 +137,43 @@ class _PersonCardState extends State<PersonCard>
   }
 
   Widget _buildPhoto() {
-    return CircleAvatar(
-      radius: 25,
-      backgroundColor: _photoBackgroundColor,
-      backgroundImage: widget.person.photoUrl != null
-          ? ResizeImage(
-              CachedNetworkImageProvider(widget.person.photoUrl!),
-              width: 150, // Optimize memory: 50 * 3 (pixel density)
-              policy: ResizeImagePolicy.fit,
-            ) as ImageProvider
-          : null,
-      child: widget.person.photoUrl == null
-          ? Text(
-              widget.person.initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            )
-          : null,
+    return GestureDetector(
+      onLongPress: () {
+        if (widget.person.photoUrl != null) {
+          FullScreenImageViewer.show(context, widget.person.photoUrl!, tag: 'tree_${widget.person.id}');
+        }
+      },
+      child: CircleAvatar(
+        radius: 25,
+        backgroundColor: _photoBackgroundColor,
+        backgroundImage: widget.person.photoUrl != null
+            ? ResizeImage(
+                CachedNetworkImageProvider(widget.person.photoUrl!),
+                width: 150, // Optimize memory: 50 * 3 (pixel density)
+                policy: ResizeImagePolicy.fit,
+              ) as ImageProvider
+            : null,
+        child: widget.person.photoUrl == null
+            ? Text(
+                widget.person.initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              )
+            : null,
+      ),
     );
   }
 
   Widget _buildName() {
     return Text(
       widget.person.fullName,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w600,
-        color: Color(0xFF333333),
+        color: Theme.of(context).colorScheme.onSurface,
       ),
       textAlign: TextAlign.center,
       maxLines: 2,
@@ -176,9 +184,9 @@ class _PersonCardState extends State<PersonCard>
   Widget _buildAge() {
     return Text(
       'Age: ${widget.person.calculatedAge}',
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 9,
-        color: Color(0xFF666666),
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         fontWeight: FontWeight.w500,
       ),
     );
@@ -187,9 +195,9 @@ class _PersonCardState extends State<PersonCard>
   Widget _buildMID() {
     return Text(
       'MID: ${widget.person.mid}',
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 8,
-        color: Color(0xFF4A90E2),
+        color: Theme.of(context).colorScheme.primary,
         fontWeight: FontWeight.w600,
       ),
       maxLines: 1,

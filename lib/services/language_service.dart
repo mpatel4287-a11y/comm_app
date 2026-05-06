@@ -277,6 +277,8 @@ class LanguageService extends ChangeNotifier {
       'samaj': 'Samaj',
       'yuvak_mandal': 'Yuvak Mandal',
       'mahila_mandal': 'Mahila Mandal',
+      'chits': 'Chits',
+      'community_services': 'Community Services',
     },
     'gu': {
       'login': 'લોગિન',
@@ -543,6 +545,8 @@ class LanguageService extends ChangeNotifier {
       'samaj': 'સમાજ',
       'yuvak_mandal': 'યુવક મંડળ',
       'mahila_mandal': 'મહિલા મંડળ',
+      'chits': 'ચિટ્સ (બચત મંડળ)',
+      'community_services': 'સમાજ સેવાઓ',
     },
   };
 

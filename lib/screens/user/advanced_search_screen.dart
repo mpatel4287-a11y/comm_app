@@ -179,14 +179,14 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
     final isDark = theme.isDarkMode;
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.grey.shade900 : Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
 
       children: [
           // Search Bar
           Container(
             padding: const EdgeInsets.all(16),
-            color: isDark ? Colors.grey.shade800 : Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -200,11 +200,6 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
                         },
                       )
                     : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
               ),
             ),
           ),
@@ -213,7 +208,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
           if (_showFilters)
             Container(
               padding: const EdgeInsets.all(16),
-              color: isDark ? Colors.grey.shade800 : Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -222,10 +217,8 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
                     children: [
                       Text(
                         'Filters',
-                        style: TextStyle(
-                          fontSize: 18,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
                       TextButton.icon(
@@ -309,14 +302,14 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
           // Results Count
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: isDark ? Colors.grey.shade800 : Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             child: Row(
               children: [
                 Text(
                   '${lang.translate('total_members')}: ${_displayedMembers.length}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -365,16 +358,16 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
             onPressed: () {
               setState(() => _showFilters = !_showFilters);
             },
-            backgroundColor: _showFilters ? Colors.orange : Colors.blue.shade700,
-            foregroundColor: Colors.white,
+            backgroundColor: _showFilters ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             child: Icon(_showFilters ? Icons.filter_list_off : Icons.filter_list),
           ),
           const SizedBox(height: 16),
           FloatingActionButton(
             heroTag: 'qr_fab',
             onPressed: () => Navigator.pushNamed(context, '/user/qr-scanner'),
-            backgroundColor: Colors.blue.shade900,
-            foregroundColor: Colors.white,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             child: const Icon(Icons.qr_code_scanner),
           ),
         ],
@@ -397,10 +390,8 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: selectedValue != null
-              ? Colors.blue.shade900
-              : isDark
-                  ? Colors.grey.shade700
-                  : Colors.grey.shade200,
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -410,10 +401,8 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
               label,
               style: TextStyle(
                 color: selectedValue != null
-                    ? Colors.white
-                    : isDark
-                        ? Colors.white
-                        : Colors.black87,
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).colorScheme.onSurface,
                 fontWeight: selectedValue != null
                     ? FontWeight.bold
                     : FontWeight.normal,
@@ -423,14 +412,14 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
               const SizedBox(width: 4),
               Container(
                 padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
                   shape: BoxShape.circle,
                 ),
                 child: Text(
                   '1',
                   style: TextStyle(
-                    color: Colors.blue.shade900,
+                    color: Theme.of(context).colorScheme.primary,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -441,10 +430,8 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
             Icon(
               Icons.arrow_drop_down,
               color: selectedValue != null
-                  ? Colors.white
-                  : isDark
-                      ? Colors.white
-                      : Colors.black87,
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Theme.of(context).colorScheme.onSurface,
             ),
           ],
         ),
@@ -477,7 +464,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
     final memberRoles = _memberRoleMap[member.mid] ?? [];
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: isDark ? Colors.grey.shade800 : Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
@@ -498,7 +485,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: Colors.blue.shade900,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 backgroundImage: member.photoUrl.isNotEmpty &&
                         member.photoUrl.startsWith('http')
                     ? CachedNetworkImageProvider(member.photoUrl)
@@ -509,7 +496,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
                         member.fullName.isNotEmpty
                             ? member.fullName[0].toUpperCase()
                             : '?',
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: Theme.of(context).colorScheme.surface),
                       )
                     : null,
               ),
@@ -523,7 +510,7 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-                        color: isDark ? Colors.white : Colors.black87,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -569,12 +556,12 @@ class _AdvancedSearchScreenState extends State<AdvancedSearchScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.stars_rounded, color: Colors.white, size: 12),
+                              Icon(Icons.stars_rounded, color: Theme.of(context).colorScheme.surface, size: 12),
                               const SizedBox(width: 4),
                               Text(
                                 roleTitle,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.surface,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),

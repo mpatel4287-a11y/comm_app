@@ -16,6 +16,8 @@ import 'digital_id_screen.dart';
 import '../admin/member_list_screen.dart';
 import 'help_faq_screen.dart';
 import 'about_screen.dart';
+import 'chits_screen.dart';
+import '../../widgets/full_screen_image_viewer.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -83,9 +85,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: theme.isDarkMode
-                ? [Colors.black, Colors.blueGrey.shade900]
-                : [Colors.blue.shade50, Colors.white],
+            colors: [
+              Theme.of(context).colorScheme.primary.withOpacity(0.05),
+              Theme.of(context).scaffoldBackgroundColor,
+            ],
           ),
         ),
         child: CustomScrollView(
@@ -96,7 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               floating: false,
               pinned: true,
               stretch: true,
-              backgroundColor: Colors.blue.shade900,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               // Remove the centered title to avoid overlap with profile info
               actions: [
                 IconButton(
@@ -119,8 +122,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.blue.shade900,
-                            Colors.blue.shade800,
+                            Theme.of(context).colorScheme.primary,
+                            Theme.of(context).colorScheme.secondary,
                           ],
                         ),
                       ),
@@ -151,27 +154,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 15),
-                        Hero(
-                          tag: 'profile_pic',
-                          child: Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
-                            ),
-                            child: CircleAvatar(
-                              radius: 38,
-                              backgroundColor: Colors.white.withOpacity(0.1),
-                              backgroundImage: _currentUser?.photoUrl != null && _currentUser!.photoUrl.isNotEmpty
-                                  ? NetworkImage(_currentUser!.photoUrl)
-                                  : null,
-                              child: _currentUser?.photoUrl == null || _currentUser!.photoUrl.isEmpty
-                                  ? Icon(
-                                      isStaff ? Icons.admin_panel_settings : Icons.person,
-                                      size: 45,
-                                      color: Colors.white,
-                                    )
-                                  : null,
+                        GestureDetector(
+                          onLongPress: () {
+                            if (_currentUser?.photoUrl != null && _currentUser!.photoUrl.isNotEmpty) {
+                              FullScreenImageViewer.show(context, _currentUser!.photoUrl, tag: 'settings_profile');
+                            }
+                          },
+                          child: Hero(
+                            tag: 'profile_pic',
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+                              ),
+                              child: CircleAvatar(
+                                radius: 38,
+                                backgroundColor: Colors.white.withOpacity(0.1),
+                                backgroundImage: _currentUser?.photoUrl != null && _currentUser!.photoUrl.isNotEmpty
+                                    ? NetworkImage(_currentUser!.photoUrl)
+                                    : null,
+                                child: _currentUser?.photoUrl == null || _currentUser!.photoUrl.isEmpty
+                                    ? Icon(
+                                        isStaff ? Icons.admin_panel_settings : Icons.person,
+                                        size: 45,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
                             ),
                           ),
                         ),
@@ -368,6 +378,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
 
+                  const SizedBox(height: 24),
+
+                  // 6. Community Section (Chits for Men only)
+                  if (_currentUser?.gender.toLowerCase() == 'male') ...[
+                    _buildSectionHeader(lang.translate('community_services')),
+                    _buildCard([
+                      _buildActionTile(
+                        icon: Icons.monetization_on_outlined,
+                        title: lang.translate('chits'),
+                        subtitle: 'Exclusive community schemes',
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ChitsScreen()));
+                        },
+                        color: Colors.amber,
+                        isLast: true,
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
+                  ],
+
                   const SizedBox(height: 40),
 
                   // Logout
@@ -441,7 +471,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w800,
-          color: Colors.blue.shade900.withOpacity(0.7),
+          color: Theme.of(context).colorScheme.primary,
           letterSpacing: 1.5,
         ),
       ),
@@ -451,9 +481,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildCard(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -537,7 +565,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle: Text(subtitle, style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
           value: value,
           onChanged: onChanged,
-          activeColor: Colors.blue.shade800,
+          activeColor: Theme.of(context).colorScheme.primary,
         ),
         if (!isLast)
           Divider(
@@ -556,13 +584,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.shade800 : Colors.blue.shade50,
+          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.blue.shade800,
+            color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary,
             fontWeight: FontWeight.bold,
             fontSize: 12,
           ),
@@ -618,20 +646,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.shade50 : Colors.grey.shade50,
+          color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? Colors.blue.shade200 : Colors.grey.shade200,
+            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
           ),
         ),
         child: Row(
           children: [
             Text(title, style: TextStyle(
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? Colors.blue.shade900 : Colors.black87,
+              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
             )),
             const Spacer(),
-            if (isSelected) Icon(Icons.check_circle, color: Colors.blue.shade800),
+            if (isSelected) Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary),
           ],
         ),
       ),

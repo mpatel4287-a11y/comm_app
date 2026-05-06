@@ -45,7 +45,7 @@ class HelpFaqScreen extends StatelessWidget {
             child: ListTile(
               leading: const Icon(Icons.email, color: Colors.blue),
               title: const Text('Contact Support'),
-              subtitle: const Text('support@communityapp.com'),
+              subtitle: const Text('sriramanagarapatidarsamaj@gmail.com'),
               onTap: () {
                 // To be implemented: launch email client
               },

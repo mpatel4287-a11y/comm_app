@@ -36,7 +36,7 @@ class __HomeProfileImageState extends State<_HomeProfileImage> {
     if (!hasValidUrl || _hasError) {
       return CircleAvatar(
         radius: widget.radius,
-        backgroundColor: Colors.blue.shade900,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         child: Text(
           widget.fullName.isNotEmpty ? widget.fullName[0].toUpperCase() : '?',
           style: TextStyle(fontSize: widget.radius * 0.7, color: Colors.white),
@@ -46,7 +46,7 @@ class __HomeProfileImageState extends State<_HomeProfileImage> {
 
     return CircleAvatar(
       radius: widget.radius,
-      backgroundColor: Colors.blue.shade900,
+      backgroundColor: Theme.of(context).colorScheme.primary,
       backgroundImage: CachedNetworkImageProvider(photoUrl),
       onBackgroundImageError: (_, __) {
         if (mounted) {
@@ -74,7 +74,7 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Community App'),
-        backgroundColor: Colors.blue.shade900,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -357,7 +357,7 @@ class MemberSearchDelegate extends SearchDelegate {
             final member = members[index];
             return ListTile(
               leading: CircleAvatar(
-                backgroundColor: Colors.blue.shade900,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 child: Text(
                   member.fullName[0].toUpperCase(),
                   style: const TextStyle(color: Colors.white),
