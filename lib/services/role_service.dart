@@ -35,36 +35,50 @@ class RoleService {
     return _firestore
         .collection(_collectionName)
         .where('category', isEqualTo: category)
-        .orderBy('order')
-        .orderBy('createdAt')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => OrganizationalRoleModel.fromMap(doc.id, doc.data()))
-            .toList());
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => OrganizationalRoleModel.fromMap(doc.id, doc.data()))
+              .toList();
+          list.sort((a, b) {
+            final orderComp = a.order.compareTo(b.order);
+            if (orderComp != 0) return orderComp;
+            return a.createdAt.compareTo(b.createdAt);
+          });
+          return list;
+        });
   }
 
   // ---------------- GET ALL ROLES (ONE-TIME) ----------------
   Future<List<OrganizationalRoleModel>> getAllRoles() async {
-    final snapshot = await _firestore
-        .collection(_collectionName)
-        .orderBy('category')
-        .orderBy('order')
-        .get();
-    return snapshot.docs
+    final snapshot = await _firestore.collection(_collectionName).get();
+    final list = snapshot.docs
         .map((doc) => OrganizationalRoleModel.fromMap(doc.id, doc.data()))
         .toList();
+    list.sort((a, b) {
+      final catComp = a.category.compareTo(b.category);
+      if (catComp != 0) return catComp;
+      return a.order.compareTo(b.order);
+    });
+    return list;
   }
 
   // ---------------- STREAM ALL ROLES ----------------
   Stream<List<OrganizationalRoleModel>> streamAllRoles() {
     return _firestore
         .collection(_collectionName)
-        .orderBy('category')
-        .orderBy('order')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => OrganizationalRoleModel.fromMap(doc.id, doc.data()))
-            .toList());
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => OrganizationalRoleModel.fromMap(doc.id, doc.data()))
+              .toList();
+          list.sort((a, b) {
+            final catComp = a.category.compareTo(b.category);
+            if (catComp != 0) return catComp;
+            return a.order.compareTo(b.order);
+          });
+          return list;
+        });
   }
 
   // ---------------- GET ROLES FOR A SPECIFIC MEMBER ----------------

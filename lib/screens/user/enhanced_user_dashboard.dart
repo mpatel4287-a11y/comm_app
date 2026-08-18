@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import '../../models/member_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../widgets/full_screen_image_viewer.dart';
-import 'chits_screen.dart';
 import '../../services/member_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/theme_service.dart';
@@ -16,6 +15,7 @@ import '../../services/language_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/group_service.dart';
 import '../../widgets/animation_utils.dart';
+import 'dart:ui';
 
 
 // import 'family_tree_view.dart';
@@ -291,7 +291,8 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
         }
       },
       child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        extendBody: true, // Allow body to flow under the translucent navigation bar
+        backgroundColor: Colors.transparent, // Let main.dart mesh gradient show through
         body: IndexedStack(
           index: _selectedIndex,
           children: [
@@ -383,19 +384,27 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
             expandedHeight: 60.0,
             floating: false,
             pinned: true,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.only(left: 16, bottom: 12),
-              title: Text(
-                '${lang.translate('welcome')}, ${_currentUser?.fullName.split(' ')[0] ?? 'User'}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBF9E4)),
-              ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withOpacity(0.8)],
+            backgroundColor: Colors.transparent, // Let flexible space handle the background
+            flexibleSpace: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                child: FlexibleSpaceBar(
+                  titlePadding: const EdgeInsets.only(left: 16, bottom: 12),
+                  title: Text(
+                    '${lang.translate('welcome')}, ${_currentUser?.fullName.split(' ')[0] ?? 'User'}',
+                    style: TextStyle(
+                      fontSize: 16, 
+                      fontWeight: FontWeight.bold, 
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  background: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface.withOpacity(0.6),
+                      border: Border(
+                        bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -483,87 +492,7 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
                   child: _buildFirmStats(lang, isDark),
                 ),
 
-                // Section: Community Services (Chits for Men only, but all Admins/Managers)
-                if (_currentUser?.gender.toLowerCase() == 'male' || _userRole == 'admin' || _userRole == 'manager') ...[
-                  const SizedBox(height: 16),
-                  SlideInAnimation(
-                    delay: const Duration(milliseconds: 320),
-                    beginOffset: const Offset(0.1, 0),
-                    child: _buildSectionHeader(
-                      lang.translate('community_services'),
-                      'Exclusive community schemes',
-                      Icons.monetization_on_outlined,
-                      null,
-                      lang,
-                      isDark,
-                    ),
-                  ),
-                  FadeInAnimation(
-                    delay: const Duration(milliseconds: 340),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ChitsScreen()));
-                        },
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.amber.withOpacity(0.3),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.monetization_on_outlined, color: Colors.amber),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      lang.translate('chits'),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Explore and join community schemes',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                const SizedBox(height: 8),
 
                 // Section: Community Activity (Events) with animation
                 SlideInAnimation(
@@ -1285,20 +1214,10 @@ class _EnhancedUserDashboardState extends State<EnhancedUserDashboard> {
     );
   }
   Widget _buildFirmStats(LanguageService lang, bool isDark) {
-    return Container(
+    return AnimatedCard(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      borderRadius: 12,
       child: InkWell(
         onTap: () => Navigator.pushNamed(context, '/admin/firms'),
         borderRadius: BorderRadius.circular(12),

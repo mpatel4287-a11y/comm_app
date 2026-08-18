@@ -279,6 +279,12 @@ class LanguageService extends ChangeNotifier {
       'mahila_mandal': 'Mahila Mandal',
       'chits': 'Chits',
       'community_services': 'Community Services',
+      'update_requests': 'Update Requests',
+      'member_update_requests': 'Member Update Requests',
+      'manage_update_requests_subtitle': 'Review & approve profile & photo updates',
+      'pending_requests': 'Pending Requests',
+      'approve_and_apply': 'Approve & Apply',
+      'reject_request': 'Reject Request',
     },
     'gu': {
       'login': 'લોગિન',
@@ -547,6 +553,12 @@ class LanguageService extends ChangeNotifier {
       'mahila_mandal': 'મહિલા મંડળ',
       'chits': 'ચિટ્સ (બચત મંડળ)',
       'community_services': 'સમાજ સેવાઓ',
+      'update_requests': 'સુધારા વિનંતીઓ',
+      'member_update_requests': 'સભ્ય માહિતી સુધારા વિનંતીઓ',
+      'manage_update_requests_subtitle': 'પ્રોફાઇલ અને ફોટો સુધારા વિનંતીઓની સમીક્ષા કરો અને મંજૂર કરો',
+      'pending_requests': 'બાકી વિનંતીઓ',
+      'approve_and_apply': 'મંજૂર કરી લાગુ કરો',
+      'reject_request': 'વિનંતી રદ કરો',
     },
   };
 

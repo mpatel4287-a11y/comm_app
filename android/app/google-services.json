@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "735355664522",
-    "project_id": "rmgm-2026",
-    "storage_bucket": "rmgm-2026.firebasestorage.app"
+    "project_number": "30491497060",
+    "project_id": "com-app-project",
+    "storage_bucket": "com-app-project.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:735355664522:android:1f659a826cade6b76b9573",
+        "mobilesdk_app_id": "1:30491497060:android:527de5b19ad83ca8104571",
         "android_client_info": {
           "package_name": "com.comm_app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDE09LekWz0gFGwjOdQZtDTr9D697CAmuQ"
+          "current_key": "AIzaSyAKKJyuA-O4suhPGOQJT_rt0Wkrly416wk"
         }
       ],
       "services": {

@@ -75,7 +75,6 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.translate('firms')),
-        backgroundColor: Colors.blue.shade900,
         actions: [
           if (_isAdmin)
             IconButton(
@@ -126,8 +125,8 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
                               shape: BoxShape.circle,
                               gradient: LinearGradient(
                                 colors: [
-                                  Colors.blue.shade400,
-                                  Colors.blue.shade700,
+                                  Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                                  Theme.of(context).colorScheme.primary,
                                 ],
                               ),
                             ),
@@ -143,7 +142,7 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
                           'Loading firms...',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.grey.shade600,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -159,14 +158,14 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
                         Icon(
                           Icons.business_outlined,
                           size: 64,
-                          color: Colors.grey.shade400,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'No firms found',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.grey.shade600,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -195,7 +194,7 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
                       'No firms match your search',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.grey.shade600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   );
@@ -228,6 +227,7 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
                           stream: _firmService.getSubFirmsStream(firm.id),
                           builder: (context, subFirmSnapshot) {
                             final subFirmsCount = subFirmSnapshot.data?.length ?? 0;
+                            final isDark = Theme.of(context).brightness == Brightness.dark;
 
                             return SlideInAnimation(
                               delay: Duration(milliseconds: 50 * index),
@@ -235,6 +235,7 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
                               child: AnimatedCard(
                                 borderRadius: 16,
                                 margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(16),
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -245,120 +246,102 @@ class _FirmsListScreenState extends State<FirmsListScreen> {
                                     ),
                                   );
                                 },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        Colors.orange.shade50,
-                                        Colors.white,
-                                      ],
+                                child: Row(
+                                  children: [
+                                    // Firm Icon
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.orange.withOpacity(0.2) : Colors.orange.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        Icons.store,
+                                        color: isDark ? Colors.orange.shade300 : Colors.orange.shade700,
+                                        size: 32,
+                                      ),
                                     ),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: Colors.orange.shade200,
-                                      width: 1.5,
+                                    const SizedBox(width: 16),
+                                    
+                                    // Firm Info
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            firm.name,
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(context).colorScheme.onSurface,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            alignment: Alignment.centerLeft,
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.apartment,
+                                                  size: 14,
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '$subFirmsCount Sub-firms',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Icon(
+                                                  Icons.groups_2,
+                                                  size: 16,
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '$memberCount Members',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  padding: const EdgeInsets.all(16),
-                                  child: Row(
-                                    children: [
-                                      // Firm Icon
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange.shade100,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Icon(
-                                          Icons.store,
-                                          color: Colors.orange.shade700,
-                                          size: 32,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      
-                                      // Firm Info
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              firm.name,
-                                              style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
+                                    
+                                    // Actions
+                                    if (_isAdmin || _userRole == 'manager')
+                                      IconButton(
+                                        icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.primary),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => CreateFirmScreen(editFirm: firm),
                                             ),
-                                            const SizedBox(height: 4),
-                                            FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              alignment: Alignment.centerLeft,
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.apartment,
-                                                    size: 14,
-                                                    color: Colors.grey.shade600,
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    '$subFirmsCount Sub-firms',
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      color: Colors.grey.shade600,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 12),
-                                                  Icon(
-                                                    Icons.groups_2,
-                                                    size: 16,
-                                                    color: Colors.grey.shade600,
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    '$memberCount Members',
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      color: Colors.grey.shade600,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                          );
+                                        },
                                       ),
-                                      
-                                      // Actions
-                                      if (_isAdmin || _userRole == 'manager')
-                                        IconButton(
-                                          icon: const Icon(Icons.edit_outlined, color: Colors.blue),
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => CreateFirmScreen(editFirm: firm),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      if (_isAdmin)
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                          onPressed: () => _deleteFirm(firm),
-                                        ),
-                                      
-                                      // Arrow
-                                      Icon(
-                                        Icons.arrow_forward_ios,
-                                        color: Colors.grey.shade400,
-                                        size: 16,
+                                    if (_isAdmin)
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                        onPressed: () => _deleteFirm(firm),
                                       ),
-                                    ],
-                                  ),
+                                    
+                                    // Arrow
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                                      size: 16,
+                                    ),
+                                  ],
                                 ),
                               ),
                             );

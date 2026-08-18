@@ -1044,7 +1044,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                                     if (selectedSpouse.marriageStatus.toLowerCase() != 'married') {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                          content: Text(lang.translate('spouse_must_be_married') ?? 'Selected spouse must have "Married" status'),
+                                          content: Text(lang.translate('spouse_must_be_married')),
                                           backgroundColor: Colors.red,
                                         ),
                                       );

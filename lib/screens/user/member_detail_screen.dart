@@ -2,8 +2,10 @@
 
 // ignore_for_file: unused_field, unused_element, unnecessary_underscores
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/member_model.dart';
 import '../../../models/organizational_role_model.dart';
@@ -14,6 +16,7 @@ import '../../../services/language_service.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../admin/member_list_screen.dart';
+import 'member_update_request_screen.dart';
 import '../../widgets/full_screen_image_viewer.dart';
 
 // Helper widget to handle profile images with error handling
@@ -283,6 +286,47 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
     );
   }
 
+  Future<void> _saveContactVCard() async {
+    if (_member == null) return;
+    try {
+      final m = _member!;
+      final vcard = StringBuffer();
+      vcard.writeln('BEGIN:VCARD');
+      vcard.writeln('VERSION:3.0');
+      vcard.writeln('N:${m.surname};${m.fullName};;;');
+      vcard.writeln('FN:${m.fullName} ${m.surname}'.trim());
+      vcard.writeln('ORG:Ramanagara Patidar Samaj;${m.familyName}');
+      vcard.writeln('TITLE:Member (MID: ${m.mid})');
+      if (m.phone.isNotEmpty) {
+        vcard.writeln('TEL;TYPE=CELL,VOICE:${m.phone}');
+      }
+      if (m.email.isNotEmpty) {
+        vcard.writeln('EMAIL;TYPE=INTERNET:${m.email}');
+      }
+      if (m.address.isNotEmpty) {
+        vcard.writeln('ADR;TYPE=HOME:;;${m.address.replaceAll('\n', ' ')};Ramanagara;;;India');
+      }
+      vcard.writeln('NOTE:MID: ${m.mid} | Family: ${m.familyName} | Blood: ${m.bloodGroup} | Native: ${m.nativeHome}');
+      vcard.writeln('END:VCARD');
+
+      final tempDir = await getTemporaryDirectory();
+      final path = '${tempDir.path}/${m.fullName.replaceAll(' ', '_')}_${m.mid}.vcf';
+      final file = await File(path).create();
+      await file.writeAsString(vcard.toString());
+
+      await Share.shareXFiles(
+        [XFile(path, mimeType: 'text/vcard')],
+        text: 'Save Contact: ${m.fullName}',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to export contact: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   void _showShareOptions() {
     final lang = Provider.of<LanguageService>(context, listen: false);
     showModalBottomSheet(
@@ -298,8 +342,18 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
             ),
             const SizedBox(height: 16),
             ListTile(
+              leading: const Icon(Icons.person_add_alt_1_rounded, color: Colors.green),
+              title: const Text('Save Contact Info (Add to Phone)'),
+              subtitle: const Text('Export vCard (.vcf) with phone, name & address'),
+              onTap: () {
+                Navigator.pop(context);
+                _saveContactVCard();
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.badge_rounded, color: Colors.blue),
               title: Text(lang.translate('digital_id')),
+              subtitle: const Text('View & download official high-res ID Card'),
               onTap: () {
                 Navigator.pop(context);
                 if (_member != null) {
@@ -312,7 +366,23 @@ ${m.bloodGroup.isNotEmpty ? 'Blood Group: ${m.bloodGroup}' : ''}
               },
             ),
             ListTile(
-              leading: const Icon(Icons.share, color: Colors.green),
+              leading: const Icon(Icons.published_with_changes_rounded, color: Colors.purple),
+              title: const Text('Request Profile / Photo Update'),
+              subtitle: const Text('Submit change or replacement photo to committee'),
+              onTap: () {
+                Navigator.pop(context);
+                if (_member != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MemberUpdateRequestScreen(targetMember: _member),
+                    ),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share, color: Colors.teal),
               title: Text(lang.translate('share')),
               onTap: () {
                 Navigator.pop(context);

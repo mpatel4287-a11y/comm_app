@@ -218,13 +218,14 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
   }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
+          boxShadow: isDark ? [] : [
             BoxShadow(
               color: Colors.grey.withOpacity(0.1),
               blurRadius: 10,
@@ -241,7 +242,7 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 4),
@@ -249,7 +250,7 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
               title,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey.shade600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -261,18 +262,15 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Text(widget.firm.name, style: const TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue.shade900,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(widget.firm.name),
       ),
       floatingActionButton: _isAdmin 
         ? FloatingActionButton.extended(
             onPressed: _showAddSubFirmDialog,
-            backgroundColor: Colors.blue.shade900,
-            foregroundColor: Colors.white,
             icon: const Icon(Icons.add),
             label: const Text('Add Sub-Firm'),
           )
@@ -312,7 +310,19 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16.0),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade900,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [
+                                Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                Theme.of(context).colorScheme.secondary.withOpacity(0.2),
+                              ]
+                            : [
+                                Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                Theme.of(context).colorScheme.primary,
+                              ],
+                      ),
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(24),
                         bottomRight: Radius.circular(24),
@@ -323,7 +333,7 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
                       children: [
                         _buildStatCard('Sub-Firms', subFirms.length.toString(), Icons.apartment, Colors.orange),
                         const SizedBox(width: 16),
-                        _buildStatCard('Total Members', memberCount.toString(), Icons.groups, Colors.blue),
+                        _buildStatCard('Total Members', memberCount.toString(), Icons.groups, Theme.of(context).colorScheme.primary),
                       ],
                     ),
                   ),
@@ -332,10 +342,13 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
                   // Sub-Firms List
                   Expanded(
                     child: subFirms.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
                             'No sub-firms found.',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: 16, 
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         )
                       : ListView.builder(
@@ -344,12 +357,19 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
                           itemBuilder: (context, index) {
                             final subFirm = subFirms[index];
                             return Card(
-                              elevation: 2,
+                              elevation: isDark ? 0 : 2,
                               margin: const EdgeInsets.only(bottom: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                side: BorderSide(color: Colors.grey.shade200),
+                                side: BorderSide(
+                                  color: isDark 
+                                      ? Colors.white.withOpacity(0.1) 
+                                      : Colors.grey.shade200,
+                                ),
                               ),
+                              color: isDark 
+                                  ? Colors.white.withOpacity(0.06) 
+                                  : Theme.of(context).cardTheme.color,
                               child: Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: Column(
@@ -361,10 +381,10 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
                                         Expanded(
                                           child: Text(
                                             subFirm.name,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 18, 
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.black87,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                             ),
                                           ),
                                         ),
@@ -375,7 +395,7 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
                                               IconButton(
                                                 padding: EdgeInsets.zero,
                                                 constraints: const BoxConstraints(),
-                                                icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                                                icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.primary),
                                                 onPressed: () => _showEditSubFirmDialog(subFirm),
                                               ),
                                             if (_isAdmin)
@@ -389,34 +409,36 @@ class _FirmDetailScreenState extends State<FirmDetailScreen> {
                                         )
                                       ],
                                     ),
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                                      child: Divider(),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                      child: Divider(
+                                        color: isDark ? Colors.white.withOpacity(0.1) : null,
+                                      ),
                                     ),
                                     // Location
                                     Row(
                                       children: [
-                                        Icon(Icons.location_on, size: 18, color: Colors.grey.shade400),
+                                        Icon(Icons.location_on, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.6)),
                                         const SizedBox(width: 12),
-                                        Expanded(child: Text(subFirm.location, style: TextStyle(color: Colors.grey.shade700, fontSize: 15))),
+                                        Expanded(child: Text(subFirm.location, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 15))),
                                       ],
                                     ),
                                     const SizedBox(height: 12),
                                     // Contact Person
                                     Row(
                                       children: [
-                                        Icon(Icons.person, size: 18, color: Colors.grey.shade400),
+                                        Icon(Icons.person, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.6)),
                                         const SizedBox(width: 12),
-                                        Expanded(child: Text(subFirm.contactName, style: TextStyle(color: Colors.grey.shade700, fontSize: 15))),
+                                        Expanded(child: Text(subFirm.contactName, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 15))),
                                       ],
                                     ),
                                     const SizedBox(height: 12),
                                     // Contact Number
                                     Row(
                                       children: [
-                                        Icon(Icons.phone, size: 18, color: Colors.grey.shade400),
+                                        Icon(Icons.phone, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.6)),
                                         const SizedBox(width: 12),
-                                        Expanded(child: Text(subFirm.contactNumber, style: TextStyle(color: Colors.grey.shade700, fontSize: 15))),
+                                        Expanded(child: Text(subFirm.contactNumber, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 15))),
                                       ],
                                     ),
                                   ],

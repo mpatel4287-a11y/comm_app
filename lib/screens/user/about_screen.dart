@@ -1,83 +1,125 @@
 // lib/screens/user/about_screen.dart
 
 import 'package:flutter/material.dart';
+import 'privacy_policy_screen.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('About Us', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue.shade900,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('About App'),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: Center(
+      body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 120,
-                height: 120,
+                width: 110,
+                height: 110,
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: theme.colorScheme.primary.withOpacity(0.1),
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.shade200,
-                      blurRadius: 20,
-                      spreadRadius: 2,
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/icon/app_icon.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      Icons.diversity_3_rounded,
+                      size: 54,
+                      color: theme.colorScheme.primary,
                     ),
-                  ],
-                ),
-                child: Icon(Icons.people_alt, size: 64, color: Colors.blue.shade900),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Community App',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
               Text(
-                'Version 1.0.0',
+                'Ramanagara Patidar Samaj',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Version 1.0.0 (Build 1)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'A unified digital ecosystem for the Ramanagara Patidar community featuring secure member directories, interactive family lineage trees, event management, firm listings, and digital identity cards.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.6,
                   color: Colors.grey.shade600,
                 ),
               ),
               const SizedBox(height: 32),
+
+              // Action buttons
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                  );
+                },
+                icon: const Icon(Icons.privacy_tip_outlined, size: 20),
+                label: const Text('Privacy Policy & Terms of Service'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 36),
+              const Divider(),
+              const SizedBox(height: 20),
               const Text(
-                'Connecting and organizing the community with advanced event management, family trees, business profiles, and digital ID solutions.',
+                'Ramanagara Patidar Samaj Executive Committee',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
-                  height: 1.6,
-                ),
-              ),
-              const SizedBox(height: 48),
-              const Divider(),
-              const SizedBox(height: 16),
-              const Text(
-                'Created by Meet Patel',
-                style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Colors.blueGrey,
-                  fontStyle: FontStyle.italic,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
-                'The Box Creations',
-                style: TextStyle(color: Colors.grey.shade500),
+                'All Rights Reserved © 2026',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
               ),
             ],
           ),
@@ -86,3 +128,4 @@ class AboutScreen extends StatelessWidget {
     );
   }
 }
+

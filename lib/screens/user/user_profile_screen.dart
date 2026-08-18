@@ -13,6 +13,10 @@ import '../../services/photo_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/member_model.dart';
 import '../../auth/login_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'help_faq_screen.dart';
+import 'about_screen.dart';
+import 'member_update_request_screen.dart';
 
 // Helper widget to handle profile images with error handling
 class ProfileImage extends StatefulWidget {
@@ -275,22 +279,40 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                         // Settings Options
                         ListTile(
+                          leading: const Icon(Icons.published_with_changes_rounded, color: Color(0xFF0F766E)),
+                          title: const Text('Request Profile & Photo Update'),
+                          subtitle: const Text('Submit corrections or replace photo'),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                          ),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MemberUpdateRequestScreen(targetMember: _currentUser),
+                            ),
+                          ),
+                        ),
+                        ListTile(
                           leading: const Icon(Icons.notifications),
                           title: const Text('Notifications'),
                           trailing: const Icon(
                             Icons.arrow_forward_ios,
                             size: 16,
                           ),
-                          onTap: () {},
+                          onTap: () => Navigator.pushNamed(context, '/user/notifications'),
                         ),
                         ListTile(
                           leading: const Icon(Icons.privacy_tip),
-                          title: const Text('Privacy'),
+                          title: const Text('Privacy Policy & Terms'),
                           trailing: const Icon(
                             Icons.arrow_forward_ios,
                             size: 16,
                           ),
-                          onTap: () {},
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                          ),
                         ),
                         ListTile(
                           leading: const Icon(Icons.help),
@@ -299,7 +321,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             Icons.arrow_forward_ios,
                             size: 16,
                           ),
-                          onTap: () {},
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const HelpFaqScreen()),
+                          ),
                         ),
                         ListTile(
                           leading: const Icon(Icons.info),
@@ -308,7 +333,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             Icons.arrow_forward_ios,
                             size: 16,
                           ),
-                          onTap: () {},
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AboutScreen()),
+                          ),
                         ),
                       ],
                     ),

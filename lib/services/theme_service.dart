@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ThemeService extends ChangeNotifier {
   static const String _prefKey = 'is_dark_mode';
@@ -42,18 +41,17 @@ class ThemeService extends ChangeNotifier {
   ThemeData getTheme() {
     final baseTheme = _isDarkMode ? _darkTheme : _lightTheme;
 
-    // Apply Hind Vadodara to guarantee modern, clean Gujarati & English text
-    final TextTheme googleTextTheme = GoogleFonts.hindVadodaraTextTheme(baseTheme.textTheme);
-    final scaledTextTheme = _scaleTextTheme(googleTextTheme, _fontScale);
+    // Remove GoogleFonts override to allow system default (SF Pro on iOS / Roboto on Android)
+    final textTheme = baseTheme.textTheme;
+    final scaledTextTheme = _scaleTextTheme(textTheme, _fontScale);
 
     return baseTheme.copyWith(
       textTheme: scaledTextTheme,
       primaryTextTheme: scaledTextTheme,
-      // Ensure fontFamily is set globally so all TextStyle() inherit it
       appBarTheme: baseTheme.appBarTheme.copyWith(
         titleTextStyle: (baseTheme.appBarTheme.titleTextStyle ??
                 scaledTextTheme.titleLarge ??
-                GoogleFonts.hindVadodara(fontSize: 20, fontWeight: FontWeight.w600))
+                const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -0.5))
             .copyWith(
           fontSize: (scaledTextTheme.titleLarge?.fontSize ?? 20) * _fontScale,
         ),
@@ -87,32 +85,31 @@ class ThemeService extends ChangeNotifier {
     return style.copyWith(fontSize: style.fontSize! * scale);
   }
 
-  // Midnight Indigo Palette - Light
+  // iOS Glassmorphic Palette - Light
   static final ThemeData _lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    fontFamily: GoogleFonts.hindVadodara().fontFamily,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF4F46E5), // Indigo Primary
-      primary: const Color(0xFF4F46E5),
-      secondary: const Color(0xFF14B8A6), // Vibrant Teal
-      tertiary: const Color(0xFFF59E0B), // Amber accent
-      surface: const Color(0xFFFFFFFF), // Pure White cards
-      surfaceContainerHighest: const Color(0xFFF1F5F9), // Slate 100
+      seedColor: const Color(0xFF007AFF), // iOS System Blue
+      primary: const Color(0xFF007AFF),
+      secondary: const Color(0xFF5856D6), // iOS Indigo
+      tertiary: const Color(0xFFFF9500), // iOS Orange
+      surface: const Color(0xFFFFFFFF).withOpacity(0.7), // Translucent white for glassmorphism
+      surfaceContainerHighest: const Color(0xFFF2F2F7), // iOS System Gray 6
       brightness: Brightness.light,
     ),
-    scaffoldBackgroundColor: const Color(0xFFF8FAFC), // Slate 50 Background
+    scaffoldBackgroundColor: Colors.transparent, // Transparent to show mesh gradient
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
-      foregroundColor: Color(0xFF0F172A), // Slate 900
+      foregroundColor: Color(0xFF000000), 
       elevation: 0,
-      scrolledUnderElevation: 0.5,
+      scrolledUnderElevation: 0,
       centerTitle: true,
-      iconTheme: IconThemeData(color: Color(0xFF0F172A)),
+      iconTheme: IconThemeData(color: Color(0xFF007AFF)),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF4F46E5),
+        backgroundColor: const Color(0xFF007AFF),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -120,108 +117,108 @@ class ThemeService extends ChangeNotifier {
       ),
     ),
     cardTheme: CardThemeData(
-      color: Colors.white,
-      elevation: 2, 
-      shadowColor: Colors.black.withOpacity(0.05),
+      color: Colors.white.withOpacity(0.6), // Translucent card base
+      elevation: 0,
+      shadowColor: Colors.transparent,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1), // Slate 200 border
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Colors.white.withOpacity(0.8), width: 1.5), 
       ),
       clipBehavior: Clip.antiAlias,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: Colors.white,
-      indicatorColor: const Color(0xFF4F46E5).withOpacity(0.1),
+      backgroundColor: Colors.white.withOpacity(0.75), // Translucent nav bar
+      indicatorColor: const Color(0xFF007AFF).withOpacity(0.15),
       elevation: 0,
       labelTextStyle: MaterialStateProperty.all(
-        const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: Colors.white.withOpacity(0.6),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        borderSide: BorderSide(color: Colors.black.withOpacity(0.05)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        borderSide: BorderSide(color: Colors.black.withOpacity(0.05)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2),
+        borderSide: const BorderSide(color: Color(0xFF007AFF), width: 2),
       ),
     ),
   );
 
-  // Midnight Indigo Palette - Dark
+  // iOS Glassmorphic Palette - Dark
   static final ThemeData _darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    fontFamily: GoogleFonts.hindVadodara().fontFamily,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF818CF8), // Light Indigo for dark mode
-      primary: const Color(0xFF818CF8),
-      secondary: const Color(0xFF2DD4BF), // Light Teal
-      tertiary: const Color(0xFFFCD34D), // Light Amber
-      surface: const Color(0xFF1E293B), // Slate 800 (Premium Dark Cards)
-      surfaceContainerHighest: const Color(0xFF334155), // Slate 700
+      seedColor: const Color(0xFF0A84FF), // iOS Dark Mode Blue
+      primary: const Color(0xFF0A84FF),
+      secondary: const Color(0xFF5E5CE6), // iOS Dark Mode Indigo
+      tertiary: const Color(0xFFFF9F0A), // iOS Dark Mode Orange
+      surface: const Color(0xFF1C1C1E).withOpacity(0.6), // Translucent black/gray
+      surfaceContainerHighest: const Color(0xFF2C2C2E), // iOS System Gray 5
       brightness: Brightness.dark,
     ),
-    scaffoldBackgroundColor: const Color(0xFF0F172A), // Slate 900 Background (Midnight)
+    scaffoldBackgroundColor: Colors.transparent, // Transparent to show mesh gradient
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
       foregroundColor: Colors.white,
       elevation: 0,
-      scrolledUnderElevation: 0.5,
+      scrolledUnderElevation: 0,
       centerTitle: true,
-      iconTheme: IconThemeData(color: Colors.white),
+      iconTheme: IconThemeData(color: Color(0xFF0A84FF)),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF818CF8),
-        foregroundColor: const Color(0xFF0F172A),
+        backgroundColor: const Color(0xFF0A84FF),
+        foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 0,
       ),
     ),
     cardTheme: CardThemeData(
-      color: const Color(0xFF1E293B),
+      color: const Color(0xFF1C1C1E).withOpacity(0.6),
       elevation: 0,
+      shadowColor: Colors.transparent,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFF334155), width: 1), // Slate 700 border
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1.5), 
       ),
       clipBehavior: Clip.antiAlias,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: const Color(0xFF1E293B),
-      indicatorColor: const Color(0xFF818CF8).withOpacity(0.15),
+      backgroundColor: const Color(0xFF1C1C1E).withOpacity(0.75),
+      indicatorColor: const Color(0xFF0A84FF).withOpacity(0.2),
       elevation: 0,
       labelTextStyle: MaterialStateProperty.all(
-        const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFF1E293B),
+      fillColor: const Color(0xFF1C1C1E).withOpacity(0.6),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF334155)),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF334155)),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF818CF8), width: 2),
+        borderSide: const BorderSide(color: Color(0xFF0A84FF), width: 2),
       ),
     ),
   );

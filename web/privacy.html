@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Ramanagara Patidar Samaj</title>
+  <meta name="description"
+    content="Official Privacy Policy and Data Safety disclosures for the Ramanagara Patidar Samaj mobile application and web portal.">
+  <meta name="keywords" content="Ramanagara Patidar Samaj, Privacy Policy, Data Safety, Community App">
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #0f766e;
+      --primary-light: #14b8a6;
+      --primary-dark: #115e59;
+      --bg-dark: #0f172a;
+      --surface-dark: #1e293b;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --card-bg: #ffffff;
+      --accent: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #e6fffa 100%);
+      color: var(--text-main);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    header {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 24px;
+    }
+
+    .header-content {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .logo-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      object-fit: cover;
+      box-shadow: 0 4px 10px rgba(15, 118, 110, 0.2);
+    }
+
+    .logo-text h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      letter-spacing: -0.02em;
+    }
+
+    .logo-text span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 16px;
+    }
+
+    .nav-links a {
+      color: var(--primary-dark);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .nav-links a:hover {
+      background: #f0fdfa;
+      color: var(--primary);
+    }
+
+    main {
+      max-width: 920px;
+      margin: 40px auto 80px;
+      padding: 0 20px;
+    }
+
+    .hero-banner {
+      background: linear-gradient(135deg, var(--primary) 0%, #0d9488 100%);
+      color: #ffffff;
+      padding: 40px;
+      border-radius: 24px;
+      box-shadow: 0 20px 40px -15px rgba(15, 118, 110, 0.35);
+      margin-bottom: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-banner h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .hero-banner p {
+      color: #ccfbf1;
+      font-size: 0.95rem;
+    }
+
+    .content-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      padding: 36px 32px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      margin-bottom: 24px;
+    }
+
+    h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--primary-dark);
+      margin: 28px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h3:first-of-type {
+      margin-top: 0;
+    }
+
+    p {
+      margin-bottom: 16px;
+      color: #334155;
+      font-size: 1rem;
+    }
+
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+      margin-bottom: 20px;
+    }
+
+    li {
+      position: relative;
+      padding-left: 28px;
+      margin-bottom: 12px;
+      color: #334155;
+      font-size: 0.98rem;
+    }
+
+    li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    .highlight-box {
+      background: #f0fdfa;
+      border-left: 4px solid var(--primary);
+      padding: 20px;
+      border-radius: 0 12px 12px 0;
+      margin: 20px 0;
+    }
+
+    .highlight-box h4 {
+      font-family: 'Outfit', sans-serif;
+      color: var(--primary-dark);
+      margin-bottom: 6px;
+      font-size: 1.05rem;
+    }
+
+    .delete-card {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      border-left: 4px solid #e11d48;
+      padding: 24px;
+      border-radius: 12px;
+      margin: 24px 0;
+    }
+
+    .delete-card h4 {
+      color: #be123c;
+      font-family: 'Outfit', sans-serif;
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+
+    .contact-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 24px;
+      margin-top: 24px;
+    }
+
+    .contact-card strong {
+      color: var(--primary-dark);
+    }
+
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    @media (max-width: 640px) {
+      .hero-banner {
+        padding: 28px 20px;
+      }
+
+      .hero-banner h2 {
+        font-size: 1.7rem;
+      }
+
+      .content-card {
+        padding: 24px 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="header-content">
+      <a href="/" class="logo-group">
+        <img src="assets/icon/app_icon.png" onerror="this.src='icons/Icon-192.png'" alt="Logo" class="logo-img">
+        <div class="logo-text">
+          <h1>Ramanagara Patidar Samaj</h1>
+          <span>Community Portal & Mobile App</span>
+        </div>
+      </a>
+      <nav class="nav-links">
+        <a href="/">Home</a>
+        <a href="terms.html">Terms</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero-banner">
+      <h2>Privacy Policy</h2>
+      <p>Effective Date: August 2026 | Version 1.0.0</p>
+    </div>
+
+    <div class="content-card">
+      <h3>1. Introduction</h3>
+      <p>
+        <strong>Ramanagara Patidar Samaj</strong> ("we", "our", or "us") is dedicated to protecting the privacy and personal information of our community members. This Privacy Policy details the types of information we collect through our mobile application and web portal, how it is utilized, how it is kept secure, and your individual privacy rights.
+      </p>
+
+      <h3>2. Information We Collect</h3>
+      <p>To provide digital directory access, family tree navigation, event management, and firm networking, we collect the following data:</p>
+      <ul>
+        <li><strong>Personal Identifiers:</strong> Full name, Member Identification Number (MID), family name, date of birth, age, gender, and blood group.</li>
+        <li><strong>Contact Information:</strong> Mobile phone numbers, residential addresses, and email addresses.</li>
+        <li><strong>Family & Community Connections:</strong> Family lineage (Head of Family, relationships, sub-families), business/firm profiles, and committee designations.</li>
+        <li><strong>Media & Photos:</strong> Profile photos, business logos, and event photos uploaded voluntarily by members or administrators.</li>
+        <li><strong>Push Notification Tokens:</strong> Firebase Cloud Messaging (FCM) tokens to deliver community announcements and meeting alerts.</li>
+        <li><strong>Biometric Data:</strong> If enabled, fingerprint or facial recognition credentials are processed exclusively on your local device hardware by the operating system and are never sent to or stored on our servers.</li>
+      </ul>
+
+      <h3>3. How We Use Your Information</h3>
+      <p>Your information is used exclusively for internal community welfare and connectivity:</p>
+      <ul>
+        <li>Maintaining a secure and searchable directory for verified community members.</li>
+        <li>Visualizing interactive family tree structures.</li>
+        <li>Sending essential community announcements, event invitations, and circulars.</li>
+        <li>Promoting community-owned businesses and entrepreneurship.</li>
+        <li>Generating digital member identity cards for verification at community gatherings.</li>
+      </ul>
+
+      <div class="highlight-box">
+        <h4>🔒 Strict No-Sale & No-Spam Policy</h4>
+        <p style="margin-bottom: 0;">We do <strong>not</strong> sell, rent, or trade your personal data to commercial advertisers or third-party marketing brokers. Data access is restricted to verified community members and authorized administrators.</p>
+      </div>
+
+      <h3>4. Data Storage & Security</h3>
+      <p>
+        All application data is securely hosted on Google Cloud Firebase (Firestore and Cloud Storage). All network traffic is encrypted in transit using industry-standard Transport Layer Security (TLS/HTTPS). Multi-factor administrative controls ensure that sensitive record modifications are restricted to authorized personnel.
+      </p>
+
+      <h3>5. Account & Data Deletion</h3>
+      <p>
+        In compliance with Google Play Store data safety guidelines and global privacy standards, members have the right to request deletion of their account and all associated personal records at any time.
+      </p>
+
+      <div class="delete-card">
+        <h4>🗑️ How to Request Account Deletion</h4>
+        <p>You can request account deletion through either of the following methods:</p>
+        <p><strong>1. Inside the Mobile App:</strong> Go to <em>Settings</em> → <em>Delete Account & Data</em> → Confirm your request. Your account will be immediately deactivated and scheduled for permanent deletion.</p>
+        <p><strong>2. Via Email:</strong> Send an email to <strong>support@ramanagarapatidar.org</strong> with your registered Full Name, Mobile Number, and MID with the subject line <em>"Account Deletion Request"</em>.</p>
+        <p style="margin-bottom: 0; font-size: 0.9rem; color: #9f1239;">Upon confirmation, all personal profiles, credentials, and uploaded images will be permanently erased from our active database within 14 business days.</p>
+      </div>
+
+      <h3>6. Children's Privacy</h3>
+      <p>
+        Our services are intended for community households. Minor children’s information is recorded solely as dependents under their parent or legal guardian's family profile for accurate family lineage records. We do not independently market to or solicit data from children under 13.
+      </p>
+
+      <h3>7. Contact Information</h3>
+      <div class="contact-card">
+        <p><strong>Ramanagara Patidar Samaj Administration</strong></p>
+        <p>Community Secretariat & IT Committee</p>
+        <p>Email: <a href="mailto:support@ramanagarapatidar.org" style="color: var(--primary); font-weight: 600;">support@ramanagarapatidar.org</a></p>
+        <p>Web: <a href="https://com-app-project.web.app" style="color: var(--primary); font-weight: 600;">https://com-app-project.web.app</a></p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2026 Ramanagara Patidar Samaj. All rights reserved. | <a href="privacy.html">Privacy Policy</a> | <a href="terms.html">Terms of Service</a></p>
+  </footer>
+
+</body>
+
+</html>

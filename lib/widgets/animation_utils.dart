@@ -1,6 +1,7 @@
 // lib/widgets/animation_utils.dart
 
 import 'package:flutter/material.dart';
+import 'dart:ui';
 
 /// Fade in animation widget
 class FadeInAnimation extends StatefulWidget {
@@ -299,15 +300,28 @@ class _AnimatedCardState extends State<AnimatedCard>
             scale: _scaleAnimation.value,
             child: Container(
               margin: widget.margin,
-              padding: widget.padding,
               decoration: BoxDecoration(
-                color: widget.backgroundColor ??
-                    (isDark ? Colors.grey.shade800 : Colors.white),
                 borderRadius: BorderRadius.circular(widget.borderRadius),
                 boxShadow: widget.boxShadow ?? defaultShadow,
-                border: widget.border,
               ),
-              child: widget.child,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(widget.borderRadius),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                  child: Container(
+                    padding: widget.padding,
+                    decoration: BoxDecoration(
+                      color: widget.backgroundColor ??
+                          (isDark ? Colors.black.withOpacity(0.3) : Colors.white.withOpacity(0.5)),
+                      border: widget.border ?? Border.all(
+                        color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.6),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: widget.child,
+                  ),
+                ),
+              ),
             ),
           );
         },

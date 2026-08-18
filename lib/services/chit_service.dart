@@ -1,5 +1,4 @@
-// lib/services/chit_service.dart
-
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/chit_model.dart';
 import 'fcm_service.dart';
@@ -75,7 +74,7 @@ class ChitService {
         );
       }
     } catch (e) {
-      print('Error notifying firm members: $e');
+      debugPrint('Error notifying firm members: $e');
     }
   }
 }

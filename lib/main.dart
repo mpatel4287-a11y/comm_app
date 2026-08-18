@@ -19,6 +19,7 @@ import 'screens/admin/analytics_dashboard.dart';
 import 'screens/admin/system_health_screen.dart';
 import 'screens/admin/notification_center_screen.dart';
 import 'screens/admin/firms_list_screen.dart';
+import 'screens/admin/admin_update_requests_screen.dart';
 import 'screens/user/digital_id_screen.dart';
 import 'models/member_model.dart';
 import 'screens/user/settings_screen.dart';
@@ -29,6 +30,7 @@ import 'screens/user/user_notification_screen.dart';
 import 'screens/user/user_calendar_screen.dart';
 import 'screens/user/user_search_tab.dart';
 import 'screens/user/qr_scanner_screen.dart';
+import 'screens/user/member_update_request_screen.dart';
 
 import 'services/session_manager.dart';
 import 'services/theme_service.dart';
@@ -43,7 +45,15 @@ import 'widgets/offline_banner.dart';
 // Top-level background message handler
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e) {
+    debugPrint('Firebase background init note: $e');
+  }
 }
 
 Future<void> main() async {
@@ -52,9 +62,19 @@ Future<void> main() async {
   final themeService = ThemeService();
   final languageService = LanguageService();
 
-  // Initialize core services in parallel to speed up startup
+  // Initialize Firebase safely if not already initialized
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e) {
+    debugPrint('Firebase init note: $e');
+  }
+
+  // Initialize core services in parallel
   await Future.wait([
-    Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
     themeService.initialize(),
     languageService.initialize(),
   ]);
@@ -209,7 +229,27 @@ class _MyAppState extends State<MyApp> {
           data: MediaQuery.of(
             context,
           ).copyWith(textScaler: TextScaler.linear(scale)),
-          child: child!,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: themeService.isDarkMode
+                    ? [
+                        const Color(0xFF0F172A), // Dark Slate
+                        const Color(0xFF000000), // Pure Black
+                        const Color(0xFF1E1B4B), // Very Dark Indigo
+                      ]
+                    : [
+                        const Color(0xFFE2E8F0), // Light Slate
+                        const Color(0xFFF8FAFC), // Off white
+                        const Color(0xFFE0E7FF), // Very Light Indigo
+                      ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
+            ),
+            child: child!,
+          ),
         );
 
         if (kIsWeb) {
@@ -254,11 +294,19 @@ class _MyAppState extends State<MyApp> {
         '/admin/system-health': (_) => const SystemHealthScreen(),
         '/admin/notifications': (_) => const NotificationCenterScreen(),
         '/admin/firms': (_) => const FirmsListScreen(),
+        '/admin/update-requests': (_) => const AdminUpdateRequestsScreen(),
         '/home': (_) => const EnhancedUserDashboard(),
         '/user/settings': (_) => const SettingsScreen(),
         '/user/profile': (_) => const UserProfileScreen(),
         '/user/notifications': (_) => const UserNotificationScreen(),
         '/user/qr-scanner': (_) => const QRScannerScreen(),
+        '/user/update-request': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is MemberModel) {
+            return MemberUpdateRequestScreen(targetMember: args);
+          }
+          return const MemberUpdateRequestScreen();
+        },
         '/user/member-detail': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
           if (args is Map<String, dynamic>) {

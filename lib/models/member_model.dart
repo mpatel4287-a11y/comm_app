@@ -385,4 +385,15 @@ class MemberModel {
       createdAt: DateTime.now(),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MemberModel &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          mid == other.mid;
+
+  @override
+  int get hashCode => id.hashCode ^ mid.hashCode;
 }

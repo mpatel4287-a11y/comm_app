@@ -81,11 +81,102 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                   child: _buildIdCard(context, lang, theme),
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
 
+                // ACTION BUTTONS SECTION
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      // Save Contact Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _saveContactVCard(lang),
+                          icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 22),
+                          label: const Text(
+                            'Save Contact Info (Add to Phone)',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF10B981), // Emerald Green
+                            elevation: 4,
+                            shadowColor: const Color(0xFF10B981).withOpacity(0.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Row of Download & Share
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 50,
+                              child: ElevatedButton.icon(
+                                onPressed: () => _saveToGallery(lang),
+                                icon: const Icon(Icons.file_download_outlined, color: Colors.white, size: 20),
+                                label: const Text(
+                                  'Save High-Res Card',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFD97706), // Amber
+                                  elevation: 3,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: SizedBox(
+                              height: 50,
+                              child: ElevatedButton.icon(
+                                onPressed: () => _shareCardAsImage(lang),
+                                icon: const Icon(Icons.share_rounded, color: Colors.white, size: 20),
+                                label: const Text(
+                                  'Share ID Card',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0F766E), // Teal
+                                  elevation: 3,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
                 
                 Padding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Text(
                     lang.translate('community_pride'),
                     style: TextStyle(
@@ -289,7 +380,6 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                           widget.member.id,
                           familyDocId: widget.member.familyDocId,
                         ),
-
                         version: QrVersions.auto,
                         size: 140.0,
                         eyeStyle: const QrEyeStyle(
@@ -302,12 +392,13 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        lang.translate('scan_to_save_contact'),
+                      const Text(
+                        'Scan with any camera to Save Contact or Download High-Res Card',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                          color: Color(0xFFFBF9E4),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -493,7 +584,8 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
       final RenderRepaintBoundary boundary = _boundaryKey.currentContext!
           .findRenderObject() as RenderRepaintBoundary;
       
-      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      // 3.5x Pixel Ratio for Ultra-Crisp High-Resolution ID Card
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.5);
       final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       
       if (byteData == null) return null;
@@ -511,6 +603,46 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
     }
   }
 
+  Future<void> _saveContactVCard(LanguageService lang) async {
+    try {
+      final m = widget.member;
+      final vcard = StringBuffer();
+      vcard.writeln('BEGIN:VCARD');
+      vcard.writeln('VERSION:3.0');
+      vcard.writeln('N:${m.surname};${m.fullName};;;');
+      vcard.writeln('FN:${m.fullName} ${m.surname}'.trim());
+      vcard.writeln('ORG:Ramanagara Patidar Samaj;${m.familyName}');
+      vcard.writeln('TITLE:Member (MID: ${m.mid})');
+      if (m.phone.isNotEmpty) {
+        vcard.writeln('TEL;TYPE=CELL,VOICE:${m.phone}');
+      }
+      if (m.email.isNotEmpty) {
+        vcard.writeln('EMAIL;TYPE=INTERNET:${m.email}');
+      }
+      if (m.address.isNotEmpty) {
+        vcard.writeln('ADR;TYPE=HOME:;;${m.address.replaceAll('\n', ' ')};Ramanagara;;;India');
+      }
+      vcard.writeln('NOTE:MID: ${m.mid} | Family: ${m.familyName} | Blood: ${m.bloodGroup} | Native: ${m.nativeHome}');
+      vcard.writeln('END:VCARD');
+
+      final tempDir = await getTemporaryDirectory();
+      final path = '${tempDir.path}/${m.fullName.replaceAll(' ', '_')}_${m.mid}.vcf';
+      final file = await File(path).create();
+      await file.writeAsString(vcard.toString());
+
+      await Share.shareXFiles(
+        [XFile(path, mimeType: 'text/vcard')],
+        text: 'Save Contact: ${m.fullName}',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to export contact: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _saveToGallery(LanguageService lang) async {
     setState(() => _isSharing = true);
     await Future.delayed(const Duration(milliseconds: 100));
@@ -525,7 +657,10 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
         await Gal.putImage(path);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Saved to Gallery!'), backgroundColor: Colors.green),
+            const SnackBar(
+              content: Text('High-Resolution ID Card Saved to Gallery! 🎉'),
+              backgroundColor: Color(0xFF10B981),
+            ),
           );
         }
       } catch (e) {

@@ -48,6 +48,10 @@
     ],
     "rewrites": [
       {
+        "source": "/member",
+        "destination": "/member.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

@@ -181,18 +181,33 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
                   width: 4,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: Colors.teal,
-                    borderRadius: BorderRadius.circular(2),
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.secondary,
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  lang.translate(role.roleTitle.toLowerCase().replaceAll(' ', '_')).toUpperCase(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurface,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    lang.translate(role.roleTitle.toLowerCase().replaceAll(' ', '_')).toUpperCase(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.5,
+                      fontSize: 16,
+                      foreground: Paint()
+                        ..shader = LinearGradient(
+                          colors: [
+                            Theme.of(context).colorScheme.onSurface,
+                            Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          ],
+                        ).createShader(const Rect.fromLTWH(0, 0, 200, 20)),
+                    ),
                   ),
                 ),
               ],
@@ -204,20 +219,19 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
               child: Text(lang.translate('to_be_announced'), style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 13)),
             )
           else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 2.2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: assignedMembers.length,
-              itemBuilder: (context, i) {
-                final m = assignedMembers[i];
-                return _buildMemberMiniCard(m);
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth = (constraints.maxWidth - 12) / 2;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: assignedMembers.map((m) {
+                    return SizedBox(
+                      width: itemWidth,
+                      child: _buildMemberMiniCard(m),
+                    );
+                  }).toList(),
+                );
               },
             ),
         ],
@@ -226,81 +240,148 @@ class _OrganizationalStructureScreenState extends State<OrganizationalStructureS
   }
 
   Widget _buildMemberMiniCard(MemberModel member) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MemberDetailScreen(memberId: member.id),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.surface,
+            Theme.of(context).colorScheme.surface.withOpacity(0.8),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        padding: const EdgeInsets.all(8),
-        child: Row(
-          children: [
-            Hero(
-              tag: 'photo_${member.id}',
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  image: member.photoUrl.isNotEmpty
-                      ? DecorationImage(
-                          image: CachedNetworkImageProvider(member.photoUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MemberDetailScreen(memberId: member.id),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          splashColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          highlightColor: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Hero(
+                  tag: 'photo_${member.id}',
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primaryContainer,
+                          Theme.of(context).colorScheme.secondaryContainer,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                      image: member.photoUrl.isNotEmpty
+                          ? DecorationImage(
+                              image: CachedNetworkImageProvider(member.photoUrl),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: member.photoUrl.isEmpty
+                        ? Center(
+                            child: Text(
+                              member.fullName.isNotEmpty ? member.fullName[0].toUpperCase() : '?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
                 ),
-                child: member.photoUrl.isEmpty
-                    ? Center(
-                        child: Text(
-                          member.fullName[0].toUpperCase(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        member.fullName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          letterSpacing: 0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.badge_outlined,
+                            size: 10,
                             color: Theme.of(context).colorScheme.primary,
                           ),
-                        ),
-                      )
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    member.fullName,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              member.mid,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  Text(
-                    member.mid,
-                    style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    shape: BoxShape.circle,
                   ),
-                ],
-              ),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-            const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-          ],
+          ),
         ),
       ),
     );

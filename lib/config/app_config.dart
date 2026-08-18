@@ -1,10 +1,9 @@
 class AppConfig {
   /// The base URL for the web version of the community app.
-  /// Update this once you have your actual domain.
-  static const String webBaseUrl = 'https://comm-app.web.app';
+  static const String webBaseUrl = 'https://com-app-project.web.app';
 
   /// The domain host for deep linking.
-  static const String deepLinkHost = 'comm-app.web.app';
+  static const String deepLinkHost = 'com-app-project.web.app';
 
   /// The scheme for deep linking (usually https).
   static const String deepLinkScheme = 'https';

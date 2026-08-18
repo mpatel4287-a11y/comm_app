@@ -16,7 +16,9 @@ import 'digital_id_screen.dart';
 import '../admin/member_list_screen.dart';
 import 'help_faq_screen.dart';
 import 'about_screen.dart';
-import 'chits_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'member_update_request_screen.dart';
+import '../admin/admin_update_requests_screen.dart';
 import '../../widgets/full_screen_image_viewer.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -284,6 +286,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildSectionHeader(lang.translate('management')),
                     _buildCard([
                       _buildActionTile(
+                        icon: Icons.published_with_changes_rounded,
+                        title: lang.translate('member_update_requests'),
+                        subtitle: lang.translate('manage_update_requests_subtitle'),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AdminUpdateRequestsScreen()),
+                        ),
+                        color: const Color(0xFF0F766E),
+                      ),
+                      _buildActionTile(
                         icon: Icons.admin_panel_settings_outlined,
                         title: lang.translate('admin_settings'),
                         subtitle: lang.translate('notification_center'),
@@ -347,20 +359,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           }
                         },
                         color: Colors.deepOrange,
+                      ),
+                      _buildActionTile(
+                        icon: Icons.published_with_changes_rounded,
+                        title: 'Request Profile & Data Update',
+                        subtitle: 'Request details or photo update',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MemberUpdateRequestScreen(targetMember: _currentUser),
+                            ),
+                          );
+                        },
+                        color: Colors.purple,
                         isLast: true,
                       ),
                     ]),
                     const SizedBox(height: 24),
                   ],
 
-                  // 5. Support & About
+                  // 5. Support & Legal
                   _buildSectionHeader(lang.translate('support')),
                   _buildCard([
+                    _buildActionTile(
+                      icon: Icons.edit_note_rounded,
+                      title: 'Submit Change Request',
+                      subtitle: 'Request member or photo corrections',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MemberUpdateRequestScreen(targetMember: _currentUser),
+                          ),
+                        );
+                      },
+                      color: Colors.indigo,
+                    ),
                     _buildActionTile(
                       icon: Icons.help_outline,
                       title: lang.translate('help_faq'),
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpFaqScreen())),
                       color: Colors.lightBlue,
+                    ),
+                    _buildActionTile(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Privacy Policy & Terms',
+                      subtitle: 'Data safety and terms of use',
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen())),
+                      color: Colors.teal,
                     ),
                     _buildActionTile(
                       icon: Icons.info_outline,
@@ -373,30 +420,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: lang.translate('reset_settings'),
                       subtitle: 'Restore to default values',
                       onTap: () => _resetSettings(context),
+                      color: Colors.amber.shade700,
+                    ),
+                    _buildActionTile(
+                      icon: Icons.delete_forever_outlined,
+                      title: 'Delete Account & Data',
+                      subtitle: 'Request permanent account deletion',
+                      onTap: () => _showDeleteAccountDialog(),
                       color: Colors.redAccent,
                       isLast: true,
                     ),
                   ]),
 
-                  const SizedBox(height: 24),
-
-                  // 6. Community Section (Chits for Men only)
-                  if (_currentUser?.gender.toLowerCase() == 'male') ...[
-                    _buildSectionHeader(lang.translate('community_services')),
-                    _buildCard([
-                      _buildActionTile(
-                        icon: Icons.monetization_on_outlined,
-                        title: lang.translate('chits'),
-                        subtitle: 'Exclusive community schemes',
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ChitsScreen()));
-                        },
-                        color: Colors.amber,
-                        isLast: true,
-                      ),
-                    ]),
-                    const SizedBox(height: 24),
-                  ],
+                  const SizedBox(height: 32),
 
                   const SizedBox(height: 40),
 
@@ -747,6 +783,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirm == true) {
       await AuthService().logout();
       Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  Future<void> _showDeleteAccountDialog() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Delete Account & Data', style: TextStyle(fontSize: 18)),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to request account deletion?',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Under Google Play Data Safety policies, you have the right to request permanent deletion of your profile, authentication credentials, and uploaded photos.',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Proceeding will submit your deletion request, log you out immediately, and deactivate your account.',
+              style: TextStyle(fontSize: 13, color: Colors.redAccent, height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Request Deletion', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Account deletion request submitted. Logging out...'),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      await Future.delayed(const Duration(seconds: 1));
+      await AuthService().logout();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     }
   }
 }
